@@ -17,7 +17,11 @@ default-features = false
 version = "2"
 default-features = false
 
+[dependencies.rand]
+version = "0.6"
+default-features = false
+
 [features]
 default = ["std"]
 nightly = ["subtle/nightly"]
-std = ["byteorder/std", "subtle/std"]
+std = ["byteorder/std", "subtle/std", "rand/std"]

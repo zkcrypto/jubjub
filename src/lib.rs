@@ -4,6 +4,7 @@
 #[macro_use]
 extern crate std;
 extern crate byteorder;
+extern crate rand;
 extern crate subtle;
 
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
