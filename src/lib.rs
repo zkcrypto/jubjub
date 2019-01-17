@@ -6,7 +6,7 @@ extern crate std;
 extern crate byteorder;
 extern crate subtle;
 
-use core::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign, MulAssign};
+use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
@@ -419,7 +419,8 @@ impl ExtendedPoint {
             v: vv_plus_uu,
             z: vv_minus_uu,
             t: &zz2 - &vv_minus_uu,
-        }.into_extended()
+        }
+        .into_extended()
     }
 
     /// This is only for debugging purposes and not
@@ -429,9 +430,9 @@ impl ExtendedPoint {
     fn is_on_curve_vartime(&self) -> bool {
         let affine = AffinePoint::from(*self);
 
-        self.z != Fq::zero() &&
-            affine.is_on_curve_vartime() &&
-            (affine.u * affine.v * self.z == self.t1 * self.t2)
+        self.z != Fq::zero()
+            && affine.is_on_curve_vartime()
+            && (affine.u * affine.v * self.z == self.t1 * self.t2)
     }
 }
 
@@ -496,7 +497,8 @@ impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
             v: &b + &a,
             z: &d + &c,
             t: &d - &c,
-        }.into_extended()
+        }
+        .into_extended()
     }
 }
 
@@ -514,7 +516,8 @@ impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
             v: &b + &a,
             z: &d - &c,
             t: &d + &c,
-        }.into_extended()
+        }
+        .into_extended()
     }
 }
 
@@ -540,7 +543,8 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
             v: &b + &a,
             z: &d + &c,
             t: &d - &c,
-        }.into_extended()
+        }
+        .into_extended()
     }
 }
 
@@ -558,7 +562,8 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
             v: &b + &a,
             z: &d - &c,
             t: &d + &c,
-        }.into_extended()
+        }
+        .into_extended()
     }
 }
 
@@ -708,9 +713,20 @@ fn test_extended_niels_point_identity() {
 #[test]
 fn test_assoc() {
     let p = ExtendedPoint::from(AffinePoint {
-        u: Fq([0xc0115cb656ae4839, 0x623dc3ff81d64c26, 0x5868e739b5794f2c, 0x23bd4fbb18d39c9c]),
-        v: Fq([0x7588ee6d6dd40deb, 0x9d6d7a23ebdb7c4c, 0x46462e26d4edb8c7, 0x10b4c1517ca82e9b])
-    }).mul_by_cofactor();
+        u: Fq([
+            0xc0115cb656ae4839,
+            0x623dc3ff81d64c26,
+            0x5868e739b5794f2c,
+            0x23bd4fbb18d39c9c,
+        ]),
+        v: Fq([
+            0x7588ee6d6dd40deb,
+            0x9d6d7a23ebdb7c4c,
+            0x46462e26d4edb8c7,
+            0x10b4c1517ca82e9b,
+        ]),
+    })
+    .mul_by_cofactor();
     assert!(p.is_on_curve_vartime());
 
     assert_eq!(
@@ -723,9 +739,20 @@ fn test_assoc() {
 #[test]
 fn test_batch_normalize() {
     let mut p = ExtendedPoint::from(AffinePoint {
-        u: Fq([0xc0115cb656ae4839, 0x623dc3ff81d64c26, 0x5868e739b5794f2c, 0x23bd4fbb18d39c9c]),
-        v: Fq([0x7588ee6d6dd40deb, 0x9d6d7a23ebdb7c4c, 0x46462e26d4edb8c7, 0x10b4c1517ca82e9b])
-    }).mul_by_cofactor();
+        u: Fq([
+            0xc0115cb656ae4839,
+            0x623dc3ff81d64c26,
+            0x5868e739b5794f2c,
+            0x23bd4fbb18d39c9c,
+        ]),
+        v: Fq([
+            0x7588ee6d6dd40deb,
+            0x9d6d7a23ebdb7c4c,
+            0x46462e26d4edb8c7,
+            0x10b4c1517ca82e9b,
+        ]),
+    })
+    .mul_by_cofactor();
 
     let mut v = vec![];
     for _ in 0..10 {
