@@ -2,7 +2,10 @@ use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use byteorder::{ByteOrder, LittleEndian};
-use rand::{CryptoRng, Rng};
+use rand::{
+    distributions::{Distribution, Standard},
+    Rng,
+};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// Represents an element of `GF(q)`.
@@ -239,6 +242,14 @@ impl Default for Fq {
     }
 }
 
+impl Distribution<Fq> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Fq {
+        let mut random_bytes = [0u8; 64];
+        rng.fill(&mut random_bytes);
+        Fq::from_bytes_wide(random_bytes)
+    }
+}
+
 impl Fq {
     pub fn zero() -> Fq {
         Fq([0, 0, 0, 0])
@@ -246,12 +257,6 @@ impl Fq {
 
     pub fn one() -> Fq {
         R
-    }
-
-    pub fn random<T: Rng + CryptoRng>(rng: &mut T) -> Fq {
-        let mut ranmdom_bytes = [0u8; 64];
-        rng.fill(&mut ranmdom_bytes);
-        Fq::from_bytes_wide(ranmdom_bytes)
     }
 
     #[inline]
@@ -304,8 +309,20 @@ impl Fq {
         ])
     }
 
-    pub fn from_u512(limbs: [u64; 8]) -> Fq {
-        // n = d1 * R + d0 = d1 * 1 + d0 = d1 + d0
+    fn from_u512(limbs: [u64; 8]) -> Fq {
+        // We reduce an arbitrary 512-bit number by decomposing it into two 256-bit digits
+        // with the higher bits multiplied by 2^256. Thus, we perform two reductions
+        //
+        // 1. the lower bits are multiplied by R^2, as normal
+        // 2. the upper bits are multiplied by R^2 * 2^256 = R^3
+        //
+        // and computing their sum in the field. It remains to see that arbitrary 256-bit
+        // numbers can be placed into Montgomery form safely using the reduction. The
+        // reduction works so long as the product is less than R=2^256 multipled by
+        // the modulus. This holds because for any `c` smaller than the modulus, we have
+        // that (2^256 - 1)*c is an acceptable product for the reduction. Therefore, the
+        // reduction always works so long as `c` is in the field; in this case it is either the
+        // constant `R2` or `R3`.
         let d1 = Fq([limbs[4], limbs[5], limbs[6], limbs[7]]) - &MODULUS;
         let d0 = Fq([limbs[0], limbs[1], limbs[2], limbs[3]]) - &MODULUS;
         // Convert to Montgomery form

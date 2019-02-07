@@ -1,35 +1,34 @@
 extern crate jubjub;
 
 extern crate rand;
+extern crate rand_xorshift;
 
 use jubjub::*;
-use rand::rngs::OsRng;
+use rand::{Rng, SeedableRng};
+use rand_xorshift::XorShiftRng;
 
-const NUM_TO_CHECK: u32 = 20;
+const NUM_TO_CHECK: u32 = 2000;
 
-fn new_os_rng() -> OsRng {
-    match OsRng::new() {
-        Ok(rng) => rng,
-        Err(e) => panic!("Failed to obtain OS RNG: {}", e),
-    }
+fn new_rng() -> XorShiftRng {
+    XorShiftRng::from_seed([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 #[test]
 fn test_associativity() {
-    let mut os_rng = new_os_rng();
+    let mut rng = new_rng();
     for _ in 0..NUM_TO_CHECK {
-        let a = Fq::random(&mut os_rng);
-        let b = Fq::random(&mut os_rng);
-        let c = Fq::random(&mut os_rng);
+        let a: Fq = rng.gen();
+        let b: Fq = rng.gen();
+        let c: Fq = rng.gen();
         assert_eq!((a * b) * c, a * (b * c))
     }
 }
 
 #[test]
 fn test_identity() {
-    let mut os_rng = new_os_rng();
+    let mut rng = new_rng();
     for _ in 0..NUM_TO_CHECK {
-        let a = Fq::random(&mut os_rng);
+        let a: Fq = rng.gen();
         assert_eq!(a, a * Fq::one());
         assert_eq!(a, Fq::one() * a);
     }
@@ -37,9 +36,9 @@ fn test_identity() {
 
 #[test]
 fn test_inverse() {
-    let mut os_rng = new_os_rng();
+    let mut rng = new_rng();
     for _ in 0..NUM_TO_CHECK {
-        let a = Fq::random(&mut os_rng);
+        let a: Fq = rng.gen();
         if a == Fq::zero() {
             continue;
         }
@@ -51,10 +50,10 @@ fn test_inverse() {
 
 #[test]
 fn test_commutativity() {
-    let mut os_rng = new_os_rng();
+    let mut rng = new_rng();
     for _ in 0..NUM_TO_CHECK {
-        let a = Fq::random(&mut os_rng);
-        let b = Fq::random(&mut os_rng);
+        let a: Fq = rng.gen();
+        let b: Fq = rng.gen();
         assert_eq!(a * b, b * a);
     }
 }

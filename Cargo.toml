@@ -21,6 +21,10 @@ default-features = false
 version = "0.6"
 default-features = false
 
+[dependencies.rand_xorshift]
+version = "0.1"
+default-features = false
+
 [features]
 default = ["std"]
 nightly = ["subtle/nightly"]
