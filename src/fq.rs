@@ -2,10 +2,13 @@ use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use byteorder::{ByteOrder, LittleEndian};
+#[cfg(test)]
 use rand::{
     distributions::{Distribution, Standard},
-    Rng,
+    Rng, SeedableRng,
 };
+#[cfg(test)]
+use rand_xorshift::XorShiftRng;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// Represents an element of `GF(q)`.
@@ -242,6 +245,7 @@ impl Default for Fq {
     }
 }
 
+#[cfg(test)]
 impl Distribution<Fq> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Fq {
         let mut random_bytes = [0u8; 64];
@@ -998,5 +1002,58 @@ fn test_invert_nonzero_is_pow() {
         r1.add_assign(&R);
         r2 = r1;
         r3 = r1;
+    }
+}
+
+#[cfg(test)]
+const NUM_RANDOM_CHECKS: u32 = 2000;
+
+#[cfg(test)]
+fn new_rng() -> XorShiftRng {
+    XorShiftRng::from_seed([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+}
+
+#[test]
+fn random_test_associativity() {
+    let mut rng = new_rng();
+    for _ in 0..NUM_RANDOM_CHECKS {
+        let a: Fq = rng.gen();
+        let b: Fq = rng.gen();
+        let c: Fq = rng.gen();
+        assert_eq!((a * b) * c, a * (b * c))
+    }
+}
+
+#[test]
+fn random_test_identity() {
+    let mut rng = new_rng();
+    for _ in 0..NUM_RANDOM_CHECKS {
+        let a: Fq = rng.gen();
+        assert_eq!(a, a * Fq::one());
+        assert_eq!(a, Fq::one() * a);
+    }
+}
+
+#[test]
+fn random_test_inverse() {
+    let mut rng = new_rng();
+    for _ in 0..NUM_RANDOM_CHECKS {
+        let a: Fq = rng.gen();
+        if a == Fq::zero() {
+            continue;
+        }
+        let a_inv = a.invert_nonzero();
+        assert_eq!(Fq::one(), a * a_inv);
+        assert_eq!(Fq::one(), a_inv * a);
+    }
+}
+
+#[test]
+fn random_test_commutativity() {
+    let mut rng = new_rng();
+    for _ in 0..NUM_RANDOM_CHECKS {
+        let a: Fq = rng.gen();
+        let b: Fq = rng.gen();
+        assert_eq!(a * b, b * a);
     }
 }
