@@ -1,8 +1,8 @@
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-use byteorder::{ByteOrder, LittleEndian};
 use crate::util::{adc, mac, sbb};
+use byteorder::{ByteOrder, LittleEndian};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// Represents an element of `GF(q)`.
@@ -899,7 +899,8 @@ fn test_from_bytes_vartime() {
         Fq::from_bytes_vartime([
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0
-        ]).unwrap(),
+        ])
+        .unwrap(),
         Fq::zero()
     );
 
@@ -907,7 +908,8 @@ fn test_from_bytes_vartime() {
         Fq::from_bytes_vartime([
             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0
-        ]).unwrap(),
+        ])
+        .unwrap(),
         Fq::one()
     );
 
@@ -915,45 +917,41 @@ fn test_from_bytes_vartime() {
         Fq::from_bytes_vartime([
             254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
             79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24
-        ]).unwrap(),
+        ])
+        .unwrap(),
         R2
     );
 
     // -1 should work
-    assert!(
-        Fq::from_bytes_vartime([
-            0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ]).is_some()
-    );
+    assert!(Fq::from_bytes_vartime([
+        0, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8, 216,
+        57, 51, 72, 125, 157, 41, 83, 167, 237, 115
+    ])
+    .is_some());
 
     // modulus is invalid
-    assert!(
-        Fq::from_bytes_vartime([
-            1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ]).is_none()
-    );
+    assert!(Fq::from_bytes_vartime([
+        1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8, 216,
+        57, 51, 72, 125, 157, 41, 83, 167, 237, 115
+    ])
+    .is_none());
 
     // Anything larger than the modulus is invalid
-    assert!(
-        Fq::from_bytes_vartime([
-            2, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ]).is_none()
-    );
-    assert!(
-        Fq::from_bytes_vartime([
-            1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 58, 51, 72, 125, 157, 41, 83, 167, 237, 115
-        ]).is_none()
-    );
-    assert!(
-        Fq::from_bytes_vartime([
-            1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8,
-            216, 57, 51, 72, 125, 157, 41, 83, 167, 237, 116
-        ]).is_none()
-    );
+    assert!(Fq::from_bytes_vartime([
+        2, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8, 216,
+        57, 51, 72, 125, 157, 41, 83, 167, 237, 115
+    ])
+    .is_none());
+    assert!(Fq::from_bytes_vartime([
+        1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8, 216,
+        58, 51, 72, 125, 157, 41, 83, 167, 237, 115
+    ])
+    .is_none());
+    assert!(Fq::from_bytes_vartime([
+        1, 0, 0, 0, 255, 255, 255, 255, 254, 91, 254, 255, 2, 164, 189, 83, 5, 216, 161, 9, 8, 216,
+        57, 51, 72, 125, 157, 41, 83, 167, 237, 116
+    ])
+    .is_none());
 }
 
 #[test]
@@ -1223,7 +1221,12 @@ fn test_sqrt() {
 #[test]
 fn sqrt_generator_squared() {
     fn multiplicative_order_is_maximal(a: Fq) -> bool {
-        let tmp = a.pow_vartime(&[0x7fffffff80000000, 0xa9ded2017fff2dff, 0x199cec0404d0ec02, 0x39f6d3a994cebea4]);
+        let tmp = a.pow_vartime(&[
+            0x7fffffff80000000,
+            0xa9ded2017fff2dff,
+            0x199cec0404d0ec02,
+            0x39f6d3a994cebea4,
+        ]);
 
         let it_is = tmp != Fq::one();
 
