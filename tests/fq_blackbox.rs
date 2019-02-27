@@ -118,3 +118,13 @@ fn test_multiply_additive_identity() {
         assert_eq!(Fq::zero(), a * Fq::zero());
     }
 }
+
+#[test]
+fn test_sqrt_blackbox() {
+    let mut rng = new_rng();
+    for _ in 0..NUM_BLACK_BOX_CHECKS {
+        let a = Fq::new_random(&mut rng);
+        let res = a.square().sqrt().1;
+        assert!(res == a || res == -a);
+    }
+}

@@ -45,7 +45,13 @@ fn bench_invert_nonzero(bencher: &mut Bencher) {
 }
 
 #[bench]
+fn bench_sqrt(bencher: &mut Bencher) {
+    let n = Fq::one().double().double().invert_nonzero();
+    bencher.iter(move || n.sqrt());
+}
+
+#[bench]
 fn bench_sqrt_vartime(bencher: &mut Bencher) {
-    let n = Fq::one().double().double();
+    let n = Fq::one().double().double().invert_nonzero();
     bencher.iter(move || n.sqrt_vartime());
 }

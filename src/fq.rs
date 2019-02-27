@@ -192,13 +192,14 @@ const R3: Fq = Fq([
     0x6e2a5bb9c8db33e9,
 ]);
 
-// /// 7*R mod q
-// const GENERATOR: Fq = Fq([
-//     0x0000000efffffff1,
-//     0x17e363d300189c0f,
-//     0xff9c57876f8457b0,
-//     0x351332208fc5a8c4,
-// ]);
+/// 7*R mod q
+#[cfg(test)]
+const GENERATOR: Fq = Fq([
+    0x0000000efffffff1,
+    0x17e363d300189c0f,
+    0xff9c57876f8457b0,
+    0x351332208fc5a8c4,
+]);
 
 const S: u32 = 32;
 
@@ -215,6 +216,13 @@ const ROOT_OF_UNITY: Fq = Fq([
 impl Default for Fq {
     fn default() -> Self {
         Self::zero()
+    }
+}
+
+#[inline(always)]
+fn square_assign_multi(n: &mut Fq, num_times: usize) {
+    for _ in 0..num_times {
+        *n = n.square();
     }
 }
 
@@ -344,6 +352,216 @@ impl Fq {
         Fq::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
     }
 
+    /// Computes the square root of this element, if it exists.
+    pub fn sqrt(&self) -> (Choice, Self) {
+        // Tonelli-Shank's algorithm for q mod 16 = 1
+        // https://eprint.iacr.org/2012/685.pdf (page 12, algorithm 5)
+
+        // Initialize c to the 2^s root of unity
+        let mut c = ROOT_OF_UNITY;
+
+        // r = self^((t + 1) // 2)
+        //   = self^6104339283789297388802252303364915521546564123189034618274734669824
+        let mut r = {
+            let t13 = *self;
+            let mut t0 = t13.square();
+            let mut t1 = t0.square();
+            t0.mul_assign(&t1);
+            let t3 = t1.square();
+            let t4 = t3 * &t0;
+            let t2 = t4 * &t13;
+            let t12 = t2 * &t1;
+            let t9 = t2 * &t0;
+            let t10 = t12 * &t3;
+            let t16 = t2 * &t4;
+            t1.mul_assign(&t10);
+            let t11 = t12 * &t4;
+            let t8 = t1 * &t3;
+            let t6 = t10 * &t4;
+            let t3 = t1 * &t4;
+            let t5 = t11 * &t4;
+            let t15 = t3 * &t0;
+            let t14 = t15 * &t0;
+            let t7 = t5 * &t4;
+            let t4 = t14 * &t0;
+            let mut t0 = t14.square();
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t7);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t3);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t16);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t12);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t6);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t8);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t5);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t9);
+            square_assign_multi(&mut t0, 3);
+            t0.mul_assign(&t13);
+            square_assign_multi(&mut t0, 11);
+            t0.mul_assign(&t15);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t14);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t10);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t13);
+            square_assign_multi(&mut t0, 12);
+            t0.mul_assign(&t12);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t11);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t10);
+            square_assign_multi(&mut t0, 13);
+            t0.mul_assign(&t9);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t8);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t7);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t6);
+            square_assign_multi(&mut t0, 14);
+            t0.mul_assign(&t5);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t4);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t1);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t3);
+            square_assign_multi(&mut t0, 4);
+            t0.mul_assign(&t2);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t1);
+            square_assign_multi(&mut t0, 31);
+            t0
+        };
+
+        // t = self^t
+        //   = self^12208678567578594777604504606729831043093128246378069236549469339647
+        let mut t = {
+            let t13 = *self;
+            let t1 = t13.square();
+            let mut t3 = t1.square();
+            let t2 = t3 * &t1;
+            let t4 = t2.square();
+            let t0 = t4 * &t2;
+            let t12 = t0 * &t13;
+            let t9 = t12 * &t1;
+            let t10 = t9 * &t2;
+            let t16 = t10 * &t1;
+            let t1 = t12 * &t4;
+            let t11 = t9 * &t4;
+            let t8 = t9 * &t0;
+            let t6 = t16 * &t4;
+            let t4 = t10 * &t0;
+            let t5 = t16 * &t0;
+            let t15 = t11 * &t0;
+            t3.mul_assign(&t15);
+            let t14 = t8 * &t0;
+            let t7 = t3 * &t2;
+            let t2 = t4 * &t0;
+            let mut t0 = t14.square();
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t7);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t4);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t16);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t12);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t6);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t8);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t5);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t9);
+            square_assign_multi(&mut t0, 3);
+            t0.mul_assign(&t13);
+            square_assign_multi(&mut t0, 11);
+            t0.mul_assign(&t15);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t14);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t10);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t13);
+            square_assign_multi(&mut t0, 12);
+            t0.mul_assign(&t12);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t11);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t10);
+            square_assign_multi(&mut t0, 13);
+            t0.mul_assign(&t9);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t8);
+            square_assign_multi(&mut t0, 7);
+            t0.mul_assign(&t7);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t6);
+            square_assign_multi(&mut t0, 14);
+            t0.mul_assign(&t5);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t2);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t1);
+            square_assign_multi(&mut t0, 8);
+            t0.mul_assign(&t4);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t2);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t3);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t2);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t2);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t2);
+            square_assign_multi(&mut t0, 6);
+            t0.mul_assign(&t2);
+            square_assign_multi(&mut t0, 5);
+            t0.mul_assign(&t1);
+            t0
+        };
+
+        // Set m to 32
+        let mut m: u32 = S as u32;
+
+        for max in (1..=S).rev() {
+            let mut t2i = t.square();
+            let mut i = 1;
+            let mut j_is_less_than_m: Choice = 1.into();
+            for j in 2..max {
+                // Square t2i until it equals one, then square c
+                let t2i_is_one = t2i.ct_eq(&Fq::one());
+                let to_be_squared = Fq::conditional_select(&t2i, &c, t2i_is_one);
+                let squared = to_be_squared.square();
+                t2i = Fq::conditional_select(&squared, &t2i, t2i_is_one);
+                let new_c = Fq::conditional_select(&c, &squared, t2i_is_one);
+
+                j_is_less_than_m &= !j.ct_eq(&m);
+                i = u32::conditional_select(&j, &i, t2i_is_one);
+                c = Fq::conditional_select(&c, &new_c, j_is_less_than_m);
+            }
+
+            let result = r * c;
+            r = Fq::conditional_select(&result, &r, t.ct_eq(&Fq::one()));
+            c = c.square();
+            let new_t = t * c;
+            t = Fq::conditional_select(&new_t, &t, t.ct_eq(&Fq::one()));
+            m = i;
+        }
+
+        (r.square().ct_eq(&self), r)
+    }
+
     fn legendre_symbol_vartime(&self) -> Self {
         // Legendre symbol computed via Euler's criterion:
         // self^((q - 1) // 2)
@@ -453,12 +671,6 @@ impl Fq {
     /// effect of inverting the element if it is
     /// nonzero.
     pub fn invert_nonzero(&self) -> Self {
-        #[inline(always)]
-        fn square_assign_multi(n: &mut Fq, num_times: usize) {
-            for _ in 0..num_times {
-                *n = n.square();
-            }
-        }
         // found using https://github.com/kwantam/addchain
         let t10 = *self;
         let t0 = t10.square();
@@ -980,17 +1192,55 @@ fn test_sqrt() {
         0x494aa01bdf32468d,
     ]);
 
-    let mut none_count = 0;
+    let mut none_count_ct = 0;
+    let mut none_count_vt = 0;
 
-    for _ in 0..100 {
+    for _ in 0..1000 {
+        // Test constant time
+        let (was_square, square_root) = square.sqrt();
+        if !(bool::from(was_square)) {
+            none_count_ct += 1;
+        } else {
+            assert_eq!(square_root * square_root, square);
+        }
+
+        // Test vartime
         let square_root = square.sqrt_vartime();
         if square_root.is_none() {
-            none_count += 1;
+            none_count_vt += 1;
         } else {
             assert_eq!(square_root.unwrap() * square_root.unwrap(), square);
         }
+
         square -= Fq::one();
     }
 
-    assert_eq!(49, none_count);
+    assert_eq!(498, none_count_ct);
+    assert_eq!(498, none_count_vt);
+}
+
+// 26217937587563095239723870254092982918845276250263818911301829349969290592256
+#[test]
+fn sqrt_generator_squared() {
+    fn multiplicative_order_is_maximal(a: Fq) -> bool {
+        let tmp = a.pow_vartime(&[0x7fffffff80000000, 0xa9ded2017fff2dff, 0x199cec0404d0ec02, 0x39f6d3a994cebea4]);
+
+        let it_is = tmp != Fq::one();
+
+        if it_is {
+            assert_eq!(tmp.square(), Fq::one());
+        }
+
+        it_is
+    }
+    assert!(multiplicative_order_is_maximal(GENERATOR));
+
+    let mut gen = GENERATOR;
+    for _ in 0..1000 {
+        if multiplicative_order_is_maximal(gen) {
+            let res = gen.square().sqrt().1;
+            assert!(res == gen || res == -gen);
+        }
+        gen = gen + Fq::one();
+    }
 }
