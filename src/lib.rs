@@ -27,6 +27,8 @@
 //! recommended to enable this if you are able to use a nightly version of the Rust compiler.
 
 #![no_std]
+// Catch documentation errors caused by code changes.
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
