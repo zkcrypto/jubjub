@@ -669,6 +669,7 @@ impl_binops_multiplicative!(ExtendedPoint, Fr);
 impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, other: &'b ExtendedNielsPoint) -> ExtendedPoint {
         // We perform addition in the extended coordinates. Here we use
         // a formula presented by Hisil, Wong, Carter and Dawson in
@@ -707,6 +708,7 @@ impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
 impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, other: &'b ExtendedNielsPoint) -> ExtendedPoint {
         let a = (&self.v - &self.u) * &other.v_plus_u;
         let b = (&self.v + &self.u) * &other.v_minus_u;
@@ -728,6 +730,7 @@ impl_binops_additive!(ExtendedPoint, ExtendedNielsPoint);
 impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, other: &'b AffineNielsPoint) -> ExtendedPoint {
         // This is identical to the addition formula for `ExtendedNielsPoint`,
         // except we can assume that `other.z` is one, so that we perform
@@ -753,6 +756,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
 impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, other: &'b AffineNielsPoint) -> ExtendedPoint {
         let a = (&self.v - &self.u) * &other.v_plus_u;
         let b = (&self.v + &self.u) * &other.v_minus_u;

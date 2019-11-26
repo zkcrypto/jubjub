@@ -107,6 +107,7 @@ impl<'a, 'b> Sub<&'b Fr> for &'a Fr {
 impl<'a, 'b> Add<&'b Fr> for &'a Fr {
     type Output = Fr;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn add(self, rhs: &'b Fr) -> Fr {
         let (d0, carry) = adc(self.0[0], rhs.0[0], 0);
