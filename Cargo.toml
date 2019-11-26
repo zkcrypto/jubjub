@@ -13,6 +13,10 @@ repository = "https://github.com/zkcrypto/jubjub"
 version = "0.2.0"
 edition = "2018"
 
+[dependencies.bls12_381]
+version = "0.1"
+default-features = false
+
 [dependencies.byteorder]
 version = "1"
 default-features = false
