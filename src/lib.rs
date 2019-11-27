@@ -14,7 +14,7 @@
 //! All operations are constant time unless explicitly noted; these functions will contain
 //! "vartime" in their name and they will be documented as variable time.
 //!
-//! This crate relies on the `subtle` crate for achieving constant time arithmetic.
+//! This crate uses the `subtle` crate to perform constant-time operations.
 
 #![no_std]
 // Catch documentation errors caused by code changes.
