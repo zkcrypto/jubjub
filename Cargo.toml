@@ -18,7 +18,7 @@ version = "1"
 default-features = false
 
 [dependencies.subtle]
-version = "2.1"
+version = "^2.2.1"
 default-features = false
 
 [dev-dependencies.rand_core]
@@ -31,5 +31,4 @@ default-features = false
 
 [features]
 default = ["std"]
-nightly = ["subtle/nightly"]
 std = []

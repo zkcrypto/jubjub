@@ -14,17 +14,7 @@
 //! All operations are constant time unless explicitly noted; these functions will contain
 //! "vartime" in their name and they will be documented as variable time.
 //!
-//! This crate relies on the `subtle` crate for achieving constant time arithmetic. It is
-//! recommended to enable the `nightly` feature on this crate (which enables the `nightly`
-//! feature in the `subtle` crate) to defend against compiler optimizations that may
-//! compromise constant time arithmetic. However, this requires use of the nightly version
-//! of the Rust compiler.
-//!
-//! # Features
-//!
-//! * `nightly`: This enables `subtle/nightly` which attempts to prevent the compiler from
-//! performing optimizations that could compromise constant time arithmetic. It is
-//! recommended to enable this if you are able to use a nightly version of the Rust compiler.
+//! This crate relies on the `subtle` crate for achieving constant time arithmetic.
 
 #![no_std]
 // Catch documentation errors caused by code changes.
