@@ -1,7 +1,7 @@
+use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-use byteorder::{ByteOrder, LittleEndian};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::util::{adc, mac, sbb};
@@ -107,6 +107,7 @@ impl<'a, 'b> Sub<&'b Fr> for &'a Fr {
 impl<'a, 'b> Add<&'b Fr> for &'a Fr {
     type Output = Fr;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn add(self, rhs: &'b Fr) -> Fr {
         let (d0, carry) = adc(self.0[0], rhs.0[0], 0);
@@ -192,10 +193,10 @@ impl Fr {
     pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Fr> {
         let mut tmp = Fr([0, 0, 0, 0]);
 
-        tmp.0[0] = LittleEndian::read_u64(&bytes[0..8]);
-        tmp.0[1] = LittleEndian::read_u64(&bytes[8..16]);
-        tmp.0[2] = LittleEndian::read_u64(&bytes[16..24]);
-        tmp.0[3] = LittleEndian::read_u64(&bytes[24..32]);
+        tmp.0[0] = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
+        tmp.0[1] = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+        tmp.0[2] = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
+        tmp.0[3] = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
 
         // Try to subtract the modulus
         let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
@@ -223,10 +224,10 @@ impl Fr {
         let tmp = Fr::montgomery_reduce(self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0);
 
         let mut res = [0; 32];
-        LittleEndian::write_u64(&mut res[0..8], tmp.0[0]);
-        LittleEndian::write_u64(&mut res[8..16], tmp.0[1]);
-        LittleEndian::write_u64(&mut res[16..24], tmp.0[2]);
-        LittleEndian::write_u64(&mut res[24..32], tmp.0[3]);
+        res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
+        res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
+        res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
+        res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
 
         res
     }
@@ -235,14 +236,14 @@ impl Fr {
     /// an element of Fr by reducing modulo r.
     pub fn from_bytes_wide(bytes: &[u8; 64]) -> Fr {
         Fr::from_u512([
-            LittleEndian::read_u64(&bytes[0..8]),
-            LittleEndian::read_u64(&bytes[8..16]),
-            LittleEndian::read_u64(&bytes[16..24]),
-            LittleEndian::read_u64(&bytes[24..32]),
-            LittleEndian::read_u64(&bytes[32..40]),
-            LittleEndian::read_u64(&bytes[40..48]),
-            LittleEndian::read_u64(&bytes[48..56]),
-            LittleEndian::read_u64(&bytes[56..64]),
+            u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
+            u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+            u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
+            u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
+            u64::from_le_bytes(bytes[32..40].try_into().unwrap()),
+            u64::from_le_bytes(bytes[40..48].try_into().unwrap()),
+            u64::from_le_bytes(bytes[48..56].try_into().unwrap()),
+            u64::from_le_bytes(bytes[56..64].try_into().unwrap()),
         ])
     }
 

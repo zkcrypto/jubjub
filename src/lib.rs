@@ -33,9 +33,8 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 #[macro_use]
 mod util;
 
-mod fq;
 mod fr;
-pub use fq::Fq;
+pub use bls12_381::Scalar as Fq;
 pub use fr::Fr;
 
 const FR_MODULUS_BYTES: [u8; 32] = [
@@ -453,9 +452,9 @@ impl AffinePoint {
     /// for use in multiple additions.
     pub const fn to_niels(&self) -> AffineNielsPoint {
         AffineNielsPoint {
-            v_plus_u: self.v.field_add(&self.u),
-            v_minus_u: self.v.subtract(&self.u),
-            t2d: self.u.multiply(&self.v).multiply(&EDWARDS_D2),
+            v_plus_u: Fq::add(&self.v, &self.u),
+            v_minus_u: Fq::sub(&self.v, &self.u),
+            t2d: Fq::mul(&Fq::mul(&self.u, &self.v), &EDWARDS_D2),
         }
     }
 
@@ -660,6 +659,7 @@ impl_binops_multiplicative!(ExtendedPoint, Fr);
 impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, other: &'b ExtendedNielsPoint) -> ExtendedPoint {
         // We perform addition in the extended coordinates. Here we use
         // a formula presented by Hisil, Wong, Carter and Dawson in
@@ -698,6 +698,7 @@ impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
 impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, other: &'b ExtendedNielsPoint) -> ExtendedPoint {
         let a = (&self.v - &self.u) * &other.v_plus_u;
         let b = (&self.v + &self.u) * &other.v_minus_u;
@@ -719,6 +720,7 @@ impl_binops_additive!(ExtendedPoint, ExtendedNielsPoint);
 impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, other: &'b AffineNielsPoint) -> ExtendedPoint {
         // This is identical to the addition formula for `ExtendedNielsPoint`,
         // except we can assume that `other.z` is one, so that we perform
@@ -744,6 +746,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
 impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, other: &'b AffineNielsPoint) -> ExtendedPoint {
         let a = (&self.v - &self.u) * &other.v_plus_u;
         let b = (&self.v + &self.u) * &other.v_minus_u;
@@ -943,17 +946,17 @@ fn test_extended_niels_point_identity() {
 #[test]
 fn test_assoc() {
     let p = ExtendedPoint::from(AffinePoint {
-        u: Fq([
-            0xc0115cb656ae4839,
-            0x623dc3ff81d64c26,
-            0x5868e739b5794f2c,
-            0x23bd4fbb18d39c9c,
+        u: Fq::from_raw([
+            0x81c571e5d883cfb0,
+            0x049f7a686f147029,
+            0xf539c860bc3ea21f,
+            0x4284715b7ccc8162,
         ]),
-        v: Fq([
-            0x7588ee6d6dd40deb,
-            0x9d6d7a23ebdb7c4c,
-            0x46462e26d4edb8c7,
-            0x10b4c1517ca82e9b,
+        v: Fq::from_raw([
+            0xbf096275684bb8ca,
+            0xc7ba245890af256d,
+            0x59119f3e86380eb0,
+            0x3793de182f9fb1d2,
         ]),
     })
     .mul_by_cofactor();
@@ -969,17 +972,17 @@ fn test_assoc() {
 #[test]
 fn test_batch_normalize() {
     let mut p = ExtendedPoint::from(AffinePoint {
-        u: Fq([
-            0xc0115cb656ae4839,
-            0x623dc3ff81d64c26,
-            0x5868e739b5794f2c,
-            0x23bd4fbb18d39c9c,
+        u: Fq::from_raw([
+            0x81c571e5d883cfb0,
+            0x049f7a686f147029,
+            0xf539c860bc3ea21f,
+            0x4284715b7ccc8162,
         ]),
-        v: Fq([
-            0x7588ee6d6dd40deb,
-            0x9d6d7a23ebdb7c4c,
-            0x46462e26d4edb8c7,
-            0x10b4c1517ca82e9b,
+        v: Fq::from_raw([
+            0xbf096275684bb8ca,
+            0xc7ba245890af256d,
+            0x59119f3e86380eb0,
+            0x3793de182f9fb1d2,
         ]),
     })
     .mul_by_cofactor();
@@ -1204,17 +1207,17 @@ fn test_mul_consistency() {
     ]);
     assert_eq!(a * b, c);
     let p = ExtendedPoint::from(AffinePoint {
-        u: Fq([
-            0xc0115cb656ae4839,
-            0x623dc3ff81d64c26,
-            0x5868e739b5794f2c,
-            0x23bd4fbb18d39c9c,
+        u: Fq::from_raw([
+            0x81c571e5d883cfb0,
+            0x049f7a686f147029,
+            0xf539c860bc3ea21f,
+            0x4284715b7ccc8162,
         ]),
-        v: Fq([
-            0x7588ee6d6dd40deb,
-            0x9d6d7a23ebdb7c4c,
-            0x46462e26d4edb8c7,
-            0x10b4c1517ca82e9b,
+        v: Fq::from_raw([
+            0xbf096275684bb8ca,
+            0xc7ba245890af256d,
+            0x59119f3e86380eb0,
+            0x3793de182f9fb1d2,
         ]),
     })
     .mul_by_cofactor();
