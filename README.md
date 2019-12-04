@@ -10,10 +10,7 @@ This is a pure Rust implementation of the Jubjub elliptic curve group and its as
 * **This implementation has not been reviewed or audited. Use at your own risk.**
 * This implementation targets Rust `1.36` or later.
 * All operations are constant time unless explicitly noted.
-
-## Features
-
-* `std` (on by default): Enables APIs that leverage the Rust standard library.
+* This implementation does not require the Rust standard library.
 
 ## [Documentation](https://docs.rs/jubjub)
 

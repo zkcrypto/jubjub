@@ -30,5 +30,4 @@ version = "0.2"
 default-features = false
 
 [features]
-default = ["std"]
-std = []
+default = []
