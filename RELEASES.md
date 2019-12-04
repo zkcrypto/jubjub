@@ -1,3 +1,13 @@
+# 0.3.0
+
+This release now depends on the `bls12_381` crate, which exposes the `Fq` field type that we re-export.
+
+* The `Fq` and `Fr` field types now have better constant function support for various operations and constructors.
+* We no longer depend on the `byteorder` crate.
+* We've bumped our `rand_core` dev-dependency up to 0.5.
+* We've removed the `std` and `nightly` features.
+* We've bumped our dependency of `subtle` up to `^2.2.1`.
+
 # 0.2.0
 
 This release switches to `subtle 2.1` to bring in the `CtOption` type, and also makes a few useful API changes.
