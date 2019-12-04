@@ -23,6 +23,12 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 
+// This lint is described at
+// https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_arithmetic_impl
+// In our library, some of the arithmetic will necessarily involve various binary
+// operators, and so this lint is triggered unnecessarily.
+#![allow(clippy::suspicious_arithmetic_impl)]
+
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
