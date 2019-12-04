@@ -1,3 +1,6 @@
+//! This module provides an implementation of the Jubjub scalar field $\mathbb{F}_r$
+//! where `r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
+
 use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -6,7 +9,8 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::util::{adc, mac, sbb};
 
-/// Represents an element of `GF(r)`.
+/// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub elliptic
+/// curve construction.
 // The internal representation of this type is four 64-bit unsigned
 // integers in little-endian order. Elements of Fr are always in
 // Montgomery form; i.e., Fr(a) = aR mod r, with R = 2^256.
@@ -40,6 +44,7 @@ impl ConstantTimeEq for Fr {
 }
 
 impl PartialEq for Fr {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.ct_eq(other).unwrap_u8() == 1
     }
@@ -70,19 +75,7 @@ impl<'a> Neg for &'a Fr {
 
     #[inline]
     fn neg(self) -> Fr {
-        // Subtract `self` from `MODULUS` to negate. Ignore the final
-        // borrow because it cannot underflow; self is guaranteed to
-        // be in the field.
-        let (d0, borrow) = sbb(MODULUS.0[0], self.0[0], 0);
-        let (d1, borrow) = sbb(MODULUS.0[1], self.0[1], borrow);
-        let (d2, borrow) = sbb(MODULUS.0[2], self.0[2], borrow);
-        let (d3, _) = sbb(MODULUS.0[3], self.0[3], borrow);
-
-        // `tmp` could be `MODULUS` if `self` was zero. Create a mask that is
-        // zero if `self` was zero, and `u64::max_value()` if self was nonzero.
-        let mask = u64::from((self.0[0] | self.0[1] | self.0[2] | self.0[3]) == 0).wrapping_sub(1);
-
-        Fr([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
+        self.neg()
     }
 }
 
@@ -100,24 +93,16 @@ impl<'a, 'b> Sub<&'b Fr> for &'a Fr {
 
     #[inline]
     fn sub(self, rhs: &'b Fr) -> Fr {
-        self.subtract(rhs)
+        self.sub(rhs)
     }
 }
 
 impl<'a, 'b> Add<&'b Fr> for &'a Fr {
     type Output = Fr;
 
-    #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn add(self, rhs: &'b Fr) -> Fr {
-        let (d0, carry) = adc(self.0[0], rhs.0[0], 0);
-        let (d1, carry) = adc(self.0[1], rhs.0[1], carry);
-        let (d2, carry) = adc(self.0[2], rhs.0[2], carry);
-        let (d3, _) = adc(self.0[3], rhs.0[3], carry);
-
-        // Attempt to subtract the modulus, to ensure the value
-        // is smaller than the modulus.
-        Fr([d0, d1, d2, d3]) - &MODULUS
+        self.add(rhs)
     }
 }
 
@@ -128,7 +113,7 @@ impl<'a, 'b> Mul<&'b Fr> for &'a Fr {
     fn mul(self, rhs: &'b Fr) -> Fr {
         // Schoolbook multiplication
 
-        self.multiply(rhs)
+        self.mul(rhs)
     }
 }
 
@@ -171,20 +156,20 @@ impl Default for Fr {
 impl Fr {
     /// Returns zero, the additive identity.
     #[inline]
-    pub fn zero() -> Fr {
+    pub const fn zero() -> Fr {
         Fr([0, 0, 0, 0])
     }
 
     /// Returns one, the multiplicative identity.
     #[inline]
-    pub fn one() -> Fr {
+    pub const fn one() -> Fr {
         R
     }
 
     /// Doubles this field element.
     #[inline]
-    pub fn double(&self) -> Fr {
-        self + self
+    pub const fn double(&self) -> Fr {
+        self.add(self)
     }
 
     /// Attempts to convert a little-endian byte representation of
@@ -268,9 +253,9 @@ impl Fr {
     }
 
     /// Converts from an integer represented in little endian
-    /// into its (congruent) representation in Fr.
+    /// into its (congruent) `Fr` representation.
     pub const fn from_raw(val: [u64; 4]) -> Self {
-        Fr(val).multiply(&R2)
+        (&Fr(val)).mul(&R2)
     }
 
     /// Squares this element.
@@ -508,11 +493,12 @@ impl Fr {
         let (r7, _) = adc(r7, carry2, carry);
 
         // Result may be within MODULUS of the correct value
-        Fr([r4, r5, r6, r7]).subtract(&MODULUS)
+        (&Fr([r4, r5, r6, r7])).sub(&MODULUS)
     }
 
+    /// Multiplies this element by another element
     #[inline]
-    const fn multiply(&self, rhs: &Self) -> Self {
+    pub const fn mul(&self, rhs: &Self) -> Self {
         // Schoolbook multiplication
 
         let (r0, carry) = mac(0, self.0[0], rhs.0[0], 0);
@@ -538,8 +524,9 @@ impl Fr {
         Fr::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
     }
 
+    /// Subtracts another element from this element.
     #[inline]
-    const fn subtract(&self, rhs: &Self) -> Self {
+    pub const fn sub(&self, rhs: &Self) -> Self {
         let (d0, borrow) = sbb(self.0[0], rhs.0[0], 0);
         let (d1, borrow) = sbb(self.0[1], rhs.0[1], borrow);
         let (d2, borrow) = sbb(self.0[2], rhs.0[2], borrow);
@@ -553,6 +540,37 @@ impl Fr {
         let (d3, _) = adc(d3, MODULUS.0[3] & borrow, carry);
 
         Fr([d0, d1, d2, d3])
+    }
+
+    /// Adds this element to another element.
+    #[inline]
+    pub const fn add(&self, rhs: &Self) -> Self {
+        let (d0, carry) = adc(self.0[0], rhs.0[0], 0);
+        let (d1, carry) = adc(self.0[1], rhs.0[1], carry);
+        let (d2, carry) = adc(self.0[2], rhs.0[2], carry);
+        let (d3, _) = adc(self.0[3], rhs.0[3], carry);
+
+        // Attempt to subtract the modulus, to ensure the value
+        // is smaller than the modulus.
+        (&Fr([d0, d1, d2, d3])).sub(&MODULUS)
+    }
+
+    /// Negates this element.
+    #[inline]
+    pub const fn neg(&self) -> Self {
+        // Subtract `self` from `MODULUS` to negate. Ignore the final
+        // borrow because it cannot underflow; self is guaranteed to
+        // be in the field.
+        let (d0, borrow) = sbb(MODULUS.0[0], self.0[0], 0);
+        let (d1, borrow) = sbb(MODULUS.0[1], self.0[1], borrow);
+        let (d2, borrow) = sbb(MODULUS.0[2], self.0[2], borrow);
+        let (d3, _) = sbb(MODULUS.0[3], self.0[3], borrow);
+
+        // `tmp` could be `MODULUS` if `self` was zero. Create a mask that is
+        // zero if `self` was zero, and `u64::max_value()` if self was nonzero.
+        let mask = (((self.0[0] | self.0[1] | self.0[2] | self.0[3]) == 0) as u64).wrapping_sub(1);
+
+        Fr([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
     }
 }
 
@@ -577,7 +595,6 @@ fn test_inv() {
     assert_eq!(inv, INV);
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn test_debug() {
     assert_eq!(
