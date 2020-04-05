@@ -61,14 +61,25 @@ impl ConditionallySelectable for Fr {
     }
 }
 
-/// Constant representing the modulus
+/// The (little-endian) modulus of the Jubjub subgroup:
 /// r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7
-pub const MODULUS: Fr = Fr([
+pub const MODULUS_WORDS: [u64; 4] = [
     0xd0970e5ed6f72cb7,
     0xa6682093ccc81082,
     0x06673b0101343b00,
     0x0e7db4ea6533afa9,
-]);
+];
+
+/// The (little-endian) modulus of the Jubjub subgroup:
+/// r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7
+pub const MODULUS_BYTES: [u8; 32] = [
+    183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52, 1, 1, 59,
+    103, 6, 169, 175, 51, 101, 234, 180, 125, 14,
+];
+
+/// Constant representing the modulus
+/// r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7
+pub const MODULUS: Fr = Fr(MODULUS_WORDS);
 
 impl<'a> Neg for &'a Fr {
     type Output = Fr;
@@ -1020,4 +1031,24 @@ fn test_from_raw() {
     assert_eq!(Fr::from_raw(MODULUS.0), Fr::zero());
 
     assert_eq!(Fr::from_raw([1, 0, 0, 0]), R);
+}
+
+#[test]
+fn test_modulus_representations_eq() {
+    assert_eq!(
+        u64::from_le_bytes(MODULUS_BYTES[0..8].try_into().unwrap()),
+        MODULUS_WORDS[0]
+    );
+    assert_eq!(
+        u64::from_le_bytes(MODULUS_BYTES[8..16].try_into().unwrap()),
+        MODULUS_WORDS[1]
+    );
+    assert_eq!(
+        u64::from_le_bytes(MODULUS_BYTES[16..24].try_into().unwrap()),
+        MODULUS_WORDS[2]
+    );
+    assert_eq!(
+        u64::from_le_bytes(MODULUS_BYTES[24..32].try_into().unwrap()),
+        MODULUS_WORDS[3]
+    );
 }
