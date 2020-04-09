@@ -95,10 +95,12 @@ impl PartialOrd for Fr {
 
 impl Ord for Fr {
     fn cmp(&self, other: &Self) -> Ordering {
+        let a = self;
+        let other = other;
         for i in (0..4).rev() {
-            if self[i] > other[i] {
+            if a[i] > other[i] {
                 return Ordering::Greater;
-            } else if self[i] < other[i] {
+            } else if a[i] < other[i] {
                 return Ordering::Less;
             }
         }
@@ -654,31 +656,42 @@ impl Fr {
 
     /// Evaluate if a `Scalar, from Fr` is even or not.
     pub fn is_even(&self) -> bool {
-        self.reduce().0[0] & 1 == 0u64
+        self.0[0] % 2 == 0
     }
+
+    /// Compute the result from `Scalar (mod 2^k)`.
+    ///
+    /// # Panics
+    ///
+    /// If the given k is > 32 (5 bits) as the value gets
+    /// greater than the limb.  
+    pub fn mod_2_pow_k(&self, k: u8) -> u8 {
+        (self.0[0] & ((1 << k) - 1)) as u8
+    }
+
     /// Compute the result from `Scalar (mods k)`.
     ///
     /// # Panics
     ///
     /// If the given `k > 32 (5 bits)` || `k == 0` as the value gets
-    /// greater than the limb.  
+    /// greater than the limb.   
     pub fn mods_2_pow_k(&self, w: u8) -> i8 {
         assert!(w < 32u8);
-        let modulus = self.mods_2_pow_k(w) as i8;
+        let modulus = self.mod_2_pow_k(w) as i8;
         let two_pow_w_minus_one = 1i8 << (w - 1);
 
         match modulus >= two_pow_w_minus_one {
-            false => return modulus,
-            true => return modulus - ((1u8 << w) as i8),
+            false => modulus,
+            true => modulus - ((1u8 << w) as i8),
         }
     }
 
     /// Computes the windowed-non-adjacent for a
     /// given an element in the JubJub Scalar field.
     pub fn compute_windowed_naf(&self, width: u8) -> [i8; 256] {
-        let mut k = *self;
+        let mut k = self.reduce();
         let mut i = 0;
-        let one = Fr::one();
+        let one = Fr::one().reduce();
         let mut res = [0i8; 256];
 
         while k >= one {
@@ -690,7 +703,7 @@ impl Fr {
                 res[i] = 0i8;
             };
 
-            k.divn(2u32);
+            k.divn(1u32);
             i += 1;
         }
         res
@@ -1149,12 +1162,11 @@ fn test_from_raw() {
 fn w_naf() {
     let fr = Fr::from(1122334455u64);
     let naf3_fr = [
-        -1, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0, 0, -1, 0, 0, 3, 0, 0, 0, 0,
-        0, 1,
+        -1i8, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0, 0, -1, 0, 0, 3, 0, 0, 0,
+        0, 0, 1,
     ];
     let computed = fr.compute_windowed_naf(3);
     let mut buf = [0i8; 31];
     buf.copy_from_slice(&computed[0..31]);
-    println!("{:?}", buf);
     assert!(&naf3_fr[..] == &computed[..31]);
 }
