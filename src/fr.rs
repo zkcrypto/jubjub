@@ -1,6 +1,9 @@
 //! This module provides an implementation of the Jubjub scalar field $\mathbb{F}_r$
 //! where `r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
 
+use core::ops::{Index, IndexMut};
+
+use core::cmp::{Ord, Ordering, PartialOrd};
 use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -34,6 +37,12 @@ impl From<u64> for Fr {
     }
 }
 
+impl From<i8> for Fr {
+    fn from(val: i8) -> Fr {
+        Fr([val.abs() as u64, 0u64, 0u64, 0u64])
+    }
+}
+
 impl ConstantTimeEq for Fr {
     fn ct_eq(&self, other: &Self) -> Choice {
         self.0[0].ct_eq(&other.0[0])
@@ -58,6 +67,38 @@ impl ConditionallySelectable for Fr {
             u64::conditional_select(&a.0[2], &b.0[2], choice),
             u64::conditional_select(&a.0[3], &b.0[3], choice),
         ])
+    }
+}
+
+impl Index<usize> for Fr {
+    type Output = u64;
+    fn index(&self, _index: usize) -> &u64 {
+        &(self.0[_index])
+    }
+}
+
+impl IndexMut<usize> for Fr {
+    fn index_mut(&mut self, _index: usize) -> &mut u64 {
+        &mut (self.0[_index])
+    }
+}
+
+impl PartialOrd for Fr {
+    fn partial_cmp(&self, other: &Fr) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl Ord for Fr {
+    fn cmp(&self, other: &Self) -> Ordering {
+        for i in (0..4).rev() {
+            if self[i] > other[i] {
+                return Ordering::Greater;
+            } else if self[i] < other[i] {
+                return Ordering::Less;
+            }
+        }
+        Ordering::Equal
     }
 }
 
@@ -170,6 +211,33 @@ impl Fr {
     #[inline]
     pub const fn double(&self) -> Fr {
         self.add(self)
+    }
+
+    /// SHR impl
+    #[inline]
+    pub fn divn(&mut self, mut n: u32) {
+        if n >= 256 {
+            *self = Self::from(0u64);
+            return;
+        }
+
+        while n >= 64 {
+            let mut t = 0;
+            for i in self.0.iter_mut().rev() {
+                core::mem::swap(&mut t, i);
+            }
+            n -= 64;
+        }
+
+        if n > 0 {
+            let mut t = 0;
+            for i in self.0.iter_mut().rev() {
+                let t2 = *i << (64 - n);
+                *i >>= n;
+                *i |= t;
+                t = t2;
+            }
+        }
     }
 
     /// Attempts to convert a little-endian byte representation of
@@ -571,6 +639,57 @@ impl Fr {
         let mask = (((self.0[0] | self.0[1] | self.0[2] | self.0[3]) == 0) as u64).wrapping_sub(1);
 
         Fr([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
+    }
+    /// Reduces bit representation of numbers, such that
+    /// they can be evaluated in terms of the least significant bit.
+    pub fn reduce(&self) -> Self {
+        Fr::montgomery_reduce(
+            self.0[0], self.0[1], self.0[2], self.0[3], 0u64, 0u64, 0u64, 0u64,
+        )
+    }
+
+    /// Evaluate if a `Scalar, from Fr` is even or not.
+    pub fn is_even(&self) -> bool {
+        self.reduce().0[0] & 1 == 0u64
+    }
+    /// Compute the result from `Scalar (mods k)`.
+    ///
+    /// # Panics
+    ///
+    /// If the given `k > 32 (5 bits)` || `k == 0` as the value gets
+    /// greater than the limb.  
+    pub fn mods_2_pow_k(&self, w: u8) -> i8 {
+        assert!(w < 32u8);
+        let modulus = self.mods_2_pow_k(w) as i8;
+        let two_pow_w_minus_one = 1i8 << (w - 1);
+
+        match modulus >= two_pow_w_minus_one {
+            false => return modulus,
+            true => return modulus - ((1u8 << w) as i8),
+        }
+    }
+
+    /// Computes the windowed-non-adjacent for a
+    /// given an element in the JubJub Scalar field.
+    pub fn compute_windowed_naf(&self, width: u8) -> [i8; 256] {
+        let mut k = *self;
+        let mut i = 0;
+        let one = Fr::one();
+        let mut res = [0i8; 256];
+
+        while k >= one {
+            if !k.is_even() {
+                let ki = k.mods_2_pow_k(width);
+                res[i] = ki;
+                k = k - Fr::from(ki);
+            } else {
+                res[i] = 0i8;
+            };
+
+            k.divn(2u32);
+            i += 1;
+        }
+        res
     }
 }
 
@@ -1020,4 +1139,18 @@ fn test_from_raw() {
     assert_eq!(Fr::from_raw(MODULUS.0), Fr::zero());
 
     assert_eq!(Fr::from_raw([1, 0, 0, 0]), R);
+}
+
+#[test]
+fn w_naf() {
+    let fr = Fr::from(1122334455u64);
+    let naf3_fr = [
+        -1, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0, 0, -1, 0, 0, 3, 0, 0, 0, 0,
+        0, 1,
+    ];
+    let computed = fr.compute_windowed_naf(3);
+    let mut buf = [0i8; 31];
+    buf.copy_from_slice(&computed[0..31]);
+    println!("{:?}", buf);
+    assert!(&naf3_fr[..] == &computed[..31]);
 }
