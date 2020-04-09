@@ -39,7 +39,11 @@ impl From<u64> for Fr {
 
 impl From<i8> for Fr {
     fn from(val: i8) -> Fr {
-        Fr([val.abs() as u64, 0u64, 0u64, 0u64])
+        match (val >= 0, val < 0) {
+            (true, false) => Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
+            (false, true) => -Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
+            (_, _) => unreachable!(),
+        }
     }
 }
 
