@@ -139,7 +139,7 @@ const R2: Fr = Fr([
     0x04f6547b8d127688,
 ]);
 
-/// R^2 = 2^768 mod r
+/// R^3 = 2^768 mod r
 const R3: Fr = Fr([
     0xe0d6c6563d830544,
     0x323e3883598d0f85,
