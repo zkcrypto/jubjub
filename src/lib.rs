@@ -51,8 +51,8 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 /// coordinates.
 #[derive(Clone, Copy, Debug)]
 pub struct AffinePoint {
-    pub u: Fq,
-    pub v: Fq,
+    u: Fq,
+    v: Fq,
 }
 
 impl Neg for AffinePoint {
