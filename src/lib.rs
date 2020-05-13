@@ -55,6 +55,22 @@ pub struct AffinePoint {
     y: Fq,
 }
 
+/// Get fixed generator point. For speed purposes, we will use a generator of this
+/// curve that has a small x-coordinate, and its corresponnding y-coordinate.
+/// The point is then reduced according to the ptimr field. We need only to
+/// derive a point with tith a point order = 1 & to check this isn't the identity
+/// point.
+///
+/// Using: x = 9599346063476877603959045752087700136767736221838581394374215807052943515113
+///        y = 2862382881649072392874176093266892593007690675622305830399263887872941817677
+
+pub fn generator() -> AffinePoint {
+    AffinePoint {
+        x: Fq::GEN_X,
+        y: Fq::GEN_Y,
+    }
+}
+
 impl Neg for AffinePoint {
     type Output = AffinePoint;
 
@@ -92,7 +108,7 @@ impl ConditionallySelectable for AffinePoint {
 
 /// This represents an extended point `(X, Y, Z, T1, T2)`
 /// with `Z` nonzero, corresponding to the affine point
-/// `(X/Z, Y/Z)`. We always have `T1 * T2 = UV/Z`.
+/// `(X/Z, Y/Z)`. We always have `T1 * T2 = XY/Z`.
 ///
 /// You can do the following things with a point in this
 /// form:
@@ -143,8 +159,8 @@ impl PartialEq for ExtendedPoint {
 impl Neg for ExtendedPoint {
     type Output = ExtendedPoint;
 
-    /// Computes the negation of a point `P = (U, V, Z, T)`
-    /// as `-P = (-U, V, Z, -T1, T2)`. The choice of `T1`
+    /// Computes the negation of a point `P = (X, Y, Z, T)`
+    /// as `-P = (-X, Y, Z, -T1, T2)`. The choice of `T1`
     /// is made without loss of generality.
     #[inline]
     fn neg(self) -> ExtendedPoint {
@@ -553,7 +569,7 @@ impl ExtendedPoint {
         //
         // We differ from the literature in that we use (x, y) rather than
         // (x, y) coordinates. We also have the constant `a = -1` implied. Let
-        // us rewrite the procedure of doubling (x, y, z) to produce (U, V, Z)
+        // us rewrite the procedure of doubling (x, y, z) to produce (X, Y, Z)
         // as follows:
         //
         // B = (x + y)^2
@@ -562,8 +578,8 @@ impl ExtendedPoint {
         // F = D - C
         // H = 2 * z^2
         // J = F - H
-        // U = (B - C - D) * J
-        // V = F * (- C - D)
+        // X = (B - C - D) * J
+        // Y = F * (- C - D)
         // Z = F * J
         //
         // If we compute K = D + C, we can rewrite this:
@@ -575,8 +591,8 @@ impl ExtendedPoint {
         // K = D + C
         // H = 2 * z^2
         // J = F - H
-        // U = (B - K) * J
-        // V = F * (-K)
+        // X = (B - K) * J
+        // Y = F * (-K)
         // Z = F * J
         //
         // In order to avoid the unnecessary negation of K,
@@ -590,8 +606,8 @@ impl ExtendedPoint {
         // K = D + C
         // H = 2 * z^2
         // J = H - F
-        // U = (B - K) * J
-        // V = F * K
+        // X = (B - K) * J
+        // Y = F * K
         // Z = F * J
         //
         // Let us rename some variables to simplify:
@@ -609,23 +625,23 @@ impl ExtendedPoint {
         //
         // We wish to obtain two factors of T = XY/Z.
         //
-        // XY/Z = (UV2 - YYpXX) * (ZZ2 - VVmUU) * YYmXX * YYpXX / VVmUU / (ZZ2 - YYmXX)
-        //      = (UV2 - YYpXX) * YYmXX * YYpXX / YYmXX
-        //      = (UV2 - YYpXX) * YYpXX
+        // XY/Z = (XY2 - YYpXX) * (ZZ2 - VVmUU) * YYmXX * YYpXX / YYmXX / (ZZ2 - YYmXX)
+        //      = (XY2 - YYpXX) * YYmXX * YYpXX / YYmXX
+        //      = (XY2 - YYpXX) * YYpXX
         //
         // and so we have that T1 = (XY2 - YYpXX) and T2 = YYpXX.
 
         let xx = self.x.square();
         let yy = self.y.square();
         let zz2 = self.z.square().double();
-        let uv2 = (&self.x + &self.y).square();
+        let xy2 = (&self.x + &self.y).square();
         let yy_plus_xx = &yy + &xx;
         let yy_minus_xx = &yy - &xx;
 
         // The remaining arithmetic is exactly the process of converting
         // from a completed point to an extended point.
         CompletedPoint {
-            x: &uv2 - &yy_plus_xx,
+            x: &xy2 - &yy_plus_xx,
             y: yy_plus_xx,
             z: yy_minus_xx,
             t: &zz2 - &yy_minus_xx,
