@@ -57,19 +57,12 @@ pub struct AffinePoint {
 
 /// Get fixed generator point. For speed purposes, we will use a generator of this
 /// curve that has a small x-coordinate, and its corresponnding y-coordinate.
-/// The point is then reduced according to the ptimr field. We need only to
+/// The point is then reduced according to the prime field. We need only to
 /// derive a point with tith a point order = 1 & to check this isn't the identity
 /// point.
 ///
 /// Using: x = 9599346063476877603959045752087700136767736221838581394374215807052943515113
 ///        y = 2862382881649072392874176093266892593007690675622305830399263887872941817677
-
-pub fn generator() -> AffinePoint {
-    AffinePoint {
-        x: Fq::GEN_X,
-        y: Fq::GEN_Y,
-    }
-}
 
 impl Neg for AffinePoint {
     type Output = AffinePoint;
