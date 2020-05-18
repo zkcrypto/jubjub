@@ -99,7 +99,6 @@ impl ConditionallySelectable for AffinePoint {
     }
 }
 
-<<<<<<< HEAD
 impl AffinePoint {
     /// Get fixed generator point. For speed purposes, we will use a generator of this
     /// curve that has a small x-coordinate, and its corresponnding y-coordinate.
@@ -127,8 +126,6 @@ impl AffinePoint {
     }
 }
 
-=======
->>>>>>> master
 /// This represents an extended point `(X, Y, Z, T1, T2)`
 /// with `Z` nonzero, corresponding to the affine point
 /// `(X/Z, Y/Z)`. We always have `T1 * T2 = XY/Z`.
