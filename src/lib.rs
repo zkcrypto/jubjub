@@ -55,15 +55,6 @@ pub struct AffinePoint {
     y: Fq,
 }
 
-/// Get fixed generator point. For speed purposes, we will use a generator of this
-/// curve that has a small x-coordinate, and its corresponnding y-coordinate.
-/// The point is then reduced according to the prime field. We need only to
-/// derive a point with tith a point order = 1 & to check this isn't the identity
-/// point.
-///
-/// Using: x = 9599346063476877603959045752087700136767736221838581394374215807052943515113
-///        y = 2862382881649072392874176093266892593007690675622305830399263887872941817677
-
 impl Neg for AffinePoint {
     type Output = AffinePoint;
 
@@ -106,8 +97,8 @@ impl AffinePoint {
     /// derive a point with tith a point order = 1 & to check this isn't the identity
     /// point.
     ///
-    /// Using: x = 9599346063476877603959045752087700136767736221838581394374215807052943515113
-    ///        y = 2862382881649072392874176093266892593007690675622305830399263887872941817677
+    /// Using: x = 1539098E9CBCC1D50CCC77B0E1804E8D6EEF947A6FD0FB2CA3D063F54E10DDE9
+    ///        y = 6540D21E7007DC603B0D848E832A862FB53BB87E05DA8257CD482CC3FD6FF4D
     pub fn generator() -> Self {
         let x_bytes: [u8; 32] = [
             233, 221, 16, 78, 245, 99, 208, 163, 44, 251, 208, 111, 122, 148, 239, 110, 141, 78,
