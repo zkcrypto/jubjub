@@ -110,13 +110,13 @@ impl AffinePoint {
     ///        y = 2862382881649072392874176093266892593007690675622305830399263887872941817677
     pub fn generator() -> Self {
         let x_bytes: [u8; 32] = [
-            21, 57, 9, 142, 156, 188, 193, 213, 12, 204, 119, 176, 225, 128, 78, 141, 110, 239,
-            148, 122, 111, 208, 251, 44, 163, 208, 99, 245, 78, 16, 221, 233,
+            233, 221, 16, 78, 245, 99, 208, 163, 44, 251, 208, 111, 122, 148, 239, 110, 141, 78,
+            128, 225, 176, 119, 204, 12, 213, 193, 188, 156, 142, 9, 57, 21,
         ];
 
         let y_bytes: [u8; 32] = [
-            6, 84, 13, 33, 231, 0, 125, 198, 3, 176, 216, 72, 232, 50, 168, 98, 251, 83, 187, 135,
-            224, 93, 168, 37, 124, 212, 130, 204, 63, 214, 255, 77,
+            77, 255, 214, 63, 204, 130, 212, 124, 37, 168, 93, 224, 135, 187, 83, 251, 98, 168, 50,
+            232, 72, 216, 176, 3, 198, 125, 0, 231, 33, 13, 84, 6,
         ];
 
         AffinePoint {
@@ -941,6 +941,23 @@ fn test_is_on_curve_var() {
     assert!(AffinePoint::identity().is_on_curve_vartime());
 }
 
+#[test]
+fn test_affine_point_generator() {
+    AffinePoint::generator();
+}
+
+#[test]
+fn test_affine_point_generator_is_on_curve() {
+    AffinePoint::generator().is_prime_order();
+}
+
+#[test]
+fn test_affine_point_generator_is_not_identity() {
+    assert_ne!(
+        ExtendedPoint::from(AffinePoint::generator().mul_by_cofactor()),
+        ExtendedPoint::identity()
+    );
+}
 #[test]
 fn test_d_is_non_quadratic_residue() {
     assert!(EDWARDS_D.sqrt().is_none().unwrap_u8() == 1);
