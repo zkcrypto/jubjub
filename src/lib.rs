@@ -91,15 +91,15 @@ impl ConditionallySelectable for AffinePoint {
 }
 
 impl AffinePoint {
-    /// Get fixed generator point. For speed purposes, we will use a generator of this
-    /// curve that has a small x-coordinate, and its corresponnding y-coordinate.
+    /// Get a fixed chosen point, that has a small x-coordinate, and its corresponding y-coordinate.
     /// The point is then reduced according to the prime field. We need only to
-    /// derive a point with tith a point order = 1 & to check this isn't the identity
-    /// point.
+    /// state the cooridnates, so users can exploit its properties
+    /// which are proven by tests, to prove general arithemtic.
+    ///
     ///
     /// Using: x = 1539098E9CBCC1D50CCC77B0E1804E8D6EEF947A6FD0FB2CA3D063F54E10DDE9
     ///        y = 6540D21E7007DC603B0D848E832A862FB53BB87E05DA8257CD482CC3FD6FF4D
-    pub fn generator() -> Self {
+    pub fn fixed_point() -> Self {
         let x_bytes: [u8; 32] = [
             233, 221, 16, 78, 245, 99, 208, 163, 44, 251, 208, 111, 122, 148, 239, 110, 141, 78,
             128, 225, 176, 119, 204, 12, 213, 193, 188, 156, 142, 9, 57, 21,
@@ -113,6 +113,22 @@ impl AffinePoint {
         AffinePoint {
             x: Fq::from_bytes(&x_bytes).unwrap(),
             y: Fq::from_bytes(&y_bytes).unwrap(),
+        }
+    }
+
+    /// Loops and creates new generators until a proper one is found.
+    pub fn generator() -> AffinePoint {
+        let mut random_bytes = [0; 32];
+        loop {
+            let generator = AffinePoint::from_bytes(random_bytes);
+            if generator.is_some().unwrap_u8() == 1 {
+                let generator = generator.unwrap();
+                if generator.is_prime_order().unwrap_u8() == 1 {
+                    return generator;
+                }
+            }
+
+            random_bytes[0] += 1;
         }
     }
 }
@@ -933,13 +949,8 @@ fn test_is_on_curve_var() {
 }
 
 #[test]
-fn test_affine_point_generator() {
-    AffinePoint::generator();
-}
-
-#[test]
-fn test_affine_point_generator_is_on_curve() {
-    AffinePoint::generator().is_prime_order();
+fn test_affine_point_generator_has_order_p() {
+    assert_eq!(AffinePoint::generator().is_prime_order().unwrap_u8(), 1);
 }
 
 #[test]
@@ -949,6 +960,7 @@ fn test_affine_point_generator_is_not_identity() {
         ExtendedPoint::identity()
     );
 }
+
 #[test]
 fn test_d_is_non_quadratic_residue() {
     assert!(EDWARDS_D.sqrt().is_none().unwrap_u8() == 1);
