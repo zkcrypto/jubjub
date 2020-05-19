@@ -91,14 +91,16 @@ impl ConditionallySelectable for AffinePoint {
 }
 
 impl AffinePoint {
-    /// Get a fixed chosen point, that has a small x-coordinate, and its corresponding y-coordinate.
+    /// Get a fixed generator point.
     /// The point is then reduced according to the prime field. We need only to
-    /// state the cooridnates, so users can exploit its properties
-    /// which are proven by tests, to prove general arithemtic.
+    /// state the coordinates, so users can exploit its properties
+    /// which are proven by tests, checking:
+    /// - It lies on the curve,  
+    /// - Is of order P,
+    /// - Is not the identity.
     ///
-    ///
-    /// Using: x = 1539098E9CBCC1D50CCC77B0E1804E8D6EEF947A6FD0FB2CA3D063F54E10DDE9
-    ///        y = 6540D21E7007DC603B0D848E832A862FB53BB87E05DA8257CD482CC3FD6FF4D
+    /// Using: x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca,
+    ///        y = 0x0000000000000000000000000000000000000000000000000000000000000012,
     pub fn generator() -> Self {
         let x_bytes: [u8; 32] = [
             202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46, 230, 204,
