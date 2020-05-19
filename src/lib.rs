@@ -99,15 +99,15 @@ impl AffinePoint {
     ///
     /// Using: x = 1539098E9CBCC1D50CCC77B0E1804E8D6EEF947A6FD0FB2CA3D063F54E10DDE9
     ///        y = 6540D21E7007DC603B0D848E832A862FB53BB87E05DA8257CD482CC3FD6FF4D
-    pub fn fixed_point() -> Self {
+    pub fn generator() -> Self {
         let x_bytes: [u8; 32] = [
-            233, 221, 16, 78, 245, 99, 208, 163, 44, 251, 208, 111, 122, 148, 239, 110, 141, 78,
-            128, 225, 176, 119, 204, 12, 213, 193, 188, 156, 142, 9, 57, 21,
+            202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46, 230, 204,
+            214, 15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
         ];
 
         let y_bytes: [u8; 32] = [
-            77, 255, 214, 63, 204, 130, 212, 124, 37, 168, 93, 224, 135, 187, 83, 251, 98, 168, 50,
-            232, 72, 216, 176, 3, 198, 125, 0, 231, 33, 13, 84, 6,
+            18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
         ];
 
         AffinePoint {
@@ -117,7 +117,7 @@ impl AffinePoint {
     }
 
     /// Loops and creates new generators until a proper one is found.
-    pub fn generator() -> AffinePoint {
+    pub fn generator_finder() -> AffinePoint {
         let mut random_bytes = [0; 32];
         loop {
             let generator = AffinePoint::from_bytes(random_bytes);
