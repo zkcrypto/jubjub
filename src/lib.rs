@@ -96,8 +96,8 @@ impl AffinePoint {
     /// state the coordinates, so users can exploit its properties
     /// which are proven by tests, checking:
     /// - It lies on the curve,  
-    /// - Is of order P,
-    /// - Is not the identity.
+    /// - Is of prime order,
+    /// - Is not the identity point.
     ///
     /// Using: x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca,
     ///        y = 0x0000000000000000000000000000000000000000000000000000000000000012,
@@ -115,22 +115,6 @@ impl AffinePoint {
         AffinePoint {
             x: Fq::from_bytes(&x_bytes).unwrap(),
             y: Fq::from_bytes(&y_bytes).unwrap(),
-        }
-    }
-
-    /// Loops and creates new generators until a proper one is found.
-    pub fn generator_finder() -> AffinePoint {
-        let mut random_bytes = [0; 32];
-        loop {
-            let generator = AffinePoint::from_bytes(random_bytes);
-            if generator.is_some().unwrap_u8() == 1 {
-                let generator = generator.unwrap();
-                if generator.is_prime_order().unwrap_u8() == 1 {
-                    return generator;
-                }
-            }
-
-            random_bytes[0] += 1;
         }
     }
 }
