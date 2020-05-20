@@ -58,15 +58,6 @@ pub struct AffinePoint {
     y: Fq,
 }
 
-/// Get fixed generator point. For speed purposes, we will use a generator of this
-/// curve that has a small x-coordinate, and its corresponnding y-coordinate.
-/// The point is then reduced according to the prime field. We need only to
-/// derive a point with tith a point order = 1 & to check this isn't the identity
-/// point.
-///
-/// Using: x = 9599346063476877603959045752087700136767736221838581394374215807052943515113
-///        y = 2862382881649072392874176093266892593007690675622305830399263887872941817677
-
 impl Neg for AffinePoint {
     type Output = AffinePoint;
 
@@ -101,6 +92,37 @@ impl ConditionallySelectable for AffinePoint {
         }
     }
 }
+
+/// Use a fixed generator point.
+/// The point is then reduced according to the prime field. We need only to
+/// state the coordinates, so users can exploit its properties
+/// which are proven by tests, checking:
+/// - It lies on the curve,  
+/// - Is of prime order,
+/// - Is not the identity point.
+///            
+/// Using: x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca,
+///        y = 0x0000000000000000000000000000000000000000000000000000000000000012,
+pub const GENERATOR: AffinePoint = AffinePoint {
+    x: Fq::from_raw([
+        0x4df7b7ffec7beaca,
+        0x2e3ebb21fd6c54ed,
+        0xf1fbf02d0fd6cce6,
+        0x3fd2814c43ac65a6,
+    ]),
+    y: Fq::from_raw([
+        0x0000000000000012,
+        000000000000000000,
+        000000000000000000,
+        000000000000,
+    ]),
+};
+
+// 202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46, 230, 204, 214,
+//         15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
+
+//         18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//         0, 0,
 
 /// This represents an extended point `(X, Y, Z, T1, T2)`
 /// with `Z` nonzero, corresponding to the affine point
@@ -915,6 +937,19 @@ pub fn batch_normalize<'a>(y: &'a mut [ExtendedPoint]) -> impl Iterator<Item = A
 #[test]
 fn test_is_on_curve_var() {
     assert!(AffinePoint::identity().is_on_curve_vartime());
+}
+
+#[test]
+fn test_affine_point_generator_has_order_p() {
+    assert_eq!(GENERATOR.is_prime_order().unwrap_u8(), 1);
+}
+
+#[test]
+fn test_affine_point_generator_is_not_identity() {
+    assert_ne!(
+        ExtendedPoint::from(GENERATOR.mul_by_cofactor()),
+        ExtendedPoint::identity()
+    );
 }
 
 #[test]
