@@ -90,34 +90,36 @@ impl ConditionallySelectable for AffinePoint {
     }
 }
 
-impl AffinePoint {
-    /// Get a fixed generator point.
-    /// The point is then reduced according to the prime field. We need only to
-    /// state the coordinates, so users can exploit its properties
-    /// which are proven by tests, checking:
-    /// - It lies on the curve,  
-    /// - Is of prime order,
-    /// - Is not the identity point.
-    ///
-    /// Using: x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca,
-    ///        y = 0x0000000000000000000000000000000000000000000000000000000000000012,
-    pub fn generator() -> Self {
-        let x_bytes: [u8; 32] = [
-            202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46, 230, 204,
-            214, 15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
-        ];
+/// Use a fixed generator point.
+/// The point is then reduced according to the prime field. We need only to
+/// state the coordinates, so users can exploit its properties
+/// which are proven by tests, checking:
+/// - It lies on the curve,  
+/// - Is of prime order,
+/// - Is not the identity point.
+///            
+/// Using: x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca,
+///        y = 0x0000000000000000000000000000000000000000000000000000000000000012,
+pub const GENERATOR: AffinePoint = AffinePoint {
+    x: Fq::from_raw([
+        0x4df7b7ffec7beaca,
+        0x2e3ebb21fd6c54ed,
+        0xf1fbf02d0fd6cce6,
+        0x3fd2814c43ac65a6,
+    ]),
+    y: Fq::from_raw([
+        0x0000000000000012,
+        000000000000000000,
+        000000000000000000,
+        000000000000,
+    ]),
+};
 
-        let y_bytes: [u8; 32] = [
-            18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ];
+// 202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46, 230, 204, 214,
+//         15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
 
-        AffinePoint {
-            x: Fq::from_bytes(&x_bytes).unwrap(),
-            y: Fq::from_bytes(&y_bytes).unwrap(),
-        }
-    }
-}
+//         18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//         0, 0,
 
 /// This represents an extended point `(X, Y, Z, T1, T2)`
 /// with `Z` nonzero, corresponding to the affine point
@@ -936,13 +938,13 @@ fn test_is_on_curve_var() {
 
 #[test]
 fn test_affine_point_generator_has_order_p() {
-    assert_eq!(AffinePoint::generator().is_prime_order().unwrap_u8(), 1);
+    assert_eq!(GENERATOR.is_prime_order().unwrap_u8(), 1);
 }
 
 #[test]
 fn test_affine_point_generator_is_not_identity() {
     assert_ne!(
-        ExtendedPoint::from(AffinePoint::generator().mul_by_cofactor()),
+        ExtendedPoint::from(GENERATOR.mul_by_cofactor()),
         ExtendedPoint::identity()
     );
 }
