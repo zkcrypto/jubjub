@@ -13,9 +13,9 @@ repository = "https://github.com/zkcrypto/jubjub"
 version = "0.3.0"
 edition = "2018"
 
-[dependencies.bls12_381]
-version = "0.1"
-default-features = false
+[dependencies.dusk-bls12_381]
+version = "0.1.0"
+# default-features = false
 
 [dependencies.subtle]
 version = "^2.2.1"
