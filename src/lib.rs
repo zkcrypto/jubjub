@@ -39,7 +39,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 mod util;
 
 mod fr;
-pub use bls12_381::Scalar as Fq;
+pub use dusk_bls12_381::Scalar as Fq;
 pub use fr::Fr;
 
 /// A better name than Fr.
