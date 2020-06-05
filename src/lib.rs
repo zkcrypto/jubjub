@@ -516,6 +516,31 @@ impl AffinePoint {
 }
 
 impl ExtendedPoint {
+    /// Returns the `x`-coordinate of this point.
+    pub fn get_x(&self) -> Fq {
+        self.x
+    }
+
+    /// Returns the `y`-coordinate of this point.
+    pub fn get_y(&self) -> Fq {
+        self.y
+    }
+
+    /// Returns the `z`-coordinate of this point.
+    pub fn get_z(&self) -> Fq {
+        self.z
+    }
+
+    /// Returns the `t1`-coordinate of this point.
+    pub fn get_t1(&self) -> Fq {
+        self.t1
+    }
+
+    /// Returns the `t2`-coordinate of this point.
+    pub fn get_t2(&self) -> Fq {
+        self.t2
+    }
+
     /// Constructs an extended point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         ExtendedPoint {
