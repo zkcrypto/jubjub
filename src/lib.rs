@@ -1393,3 +1393,9 @@ fn test_serialization_consistency() {
         p = p + &gen;
     }
 }
+
+/// Compute a shared secret `secret · public` using DHKE protocol
+pub fn dhke(secret: &Fr, public: &ExtendedPoint) -> Fq {
+    let shared: AffinePoint = public.mul(secret).into();
+    shared.get_y()
+}

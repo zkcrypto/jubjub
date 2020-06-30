@@ -1,5 +1,7 @@
 mod common;
 
+use core::ops::Mul;
+
 use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
 use jubjub::*;
 
@@ -116,5 +118,21 @@ fn test_multiply_additive_identity() {
         let a = Fr::new_random(&mut rng);
         assert_eq!(Fr::zero(), Fr::zero() * a);
         assert_eq!(Fr::zero(), a * Fr::zero());
+    }
+}
+
+#[test]
+fn test_dhke() {
+    let mut rng = new_rng();
+    let g: ExtendedPoint = GENERATOR.into();
+    for _ in 0..NUM_BLACK_BOX_CHECKS {
+        let a = Fr::new_random(&mut rng);
+        let b = Fr::new_random(&mut rng);
+
+        let a_g = g.mul(&a);
+        let b_g = g.mul(&b);
+
+        assert_eq!(dhke(&a, &b_g), dhke(&b, &a_g));
+        assert_ne!(dhke(&a, &b_g), dhke(&b, &b_g));
     }
 }
