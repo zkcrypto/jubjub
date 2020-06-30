@@ -1,6 +1,6 @@
 mod common;
 
-use std::ops::Mul;
+use core::ops::Mul;
 
 use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
 use jubjub::*;
