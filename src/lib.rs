@@ -1,18 +1,24 @@
-//! This crate provides an implementation of the **Jubjub** elliptic curve and its associated
-//! field arithmetic. See [`README.md`](https://github.com/zkcrypto/jubjub/blob/master/README.md) for more details about Jubjub.
+//! This crate provides an implementation of the **Jubjub** elliptic curve and
+//! its associated field arithmetic.
+//! See [`README.md`](https://github.com/zkcrypto/jubjub/blob/master/README.md)
+// for more details about Jubjub.
 //!
 //! # API
 //!
-//! * `AffinePoint` / `ExtendedPoint` which are implementations of Jubjub group arithmetic
-//! * `AffineNielsPoint` / `ExtendedNielsPoint` which are pre-processed Jubjub points
+//! * `AffinePoint` / `ExtendedPoint` which are implementations of Jubjub group
+//!   arithmetic
+//! * `AffineNielsPoint` / `ExtendedNielsPoint` which are pre-processed Jubjub
+//!   points
 //! * `Fq`, which is the base field of Jubjub
 //! * `Fr`, which is the scalar field of Jubjub
-//! * `batch_normalize` for converting many `ExtendedPoint`s into `AffinePoint`s efficiently.
+//! * `batch_normalize` for converting many `ExtendedPoint`s into `AffinePoint`s
+//!   efficiently.
 //!
 //! # Constant Time
 //!
-//! All operations are constant time unless explicitly noted; these functions will contain
-//! "vartime" in their name and they will be documented as variable time.
+//! All operations are constant time unless explicitly noted; these functions
+//! will contain "vartime" in their name and they will be documented as variable
+//! time.
 //!
 //! This crate uses the `subtle` crate to perform constant-time operations.
 
@@ -24,8 +30,8 @@
 #![deny(unsafe_code)]
 // This lint is described at
 // https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_arithmetic_impl
-// In our library, some of the arithmetic will necessarily involve various binary
-// operators, and so this lint is triggered unnecessarily.
+// In our library, some of the arithmetic will necessarily involve various
+// binary operators, and so this lint is triggered unnecessarily.
 #![allow(clippy::suspicious_arithmetic_impl)]
 
 #[cfg(test)]
@@ -46,8 +52,8 @@ pub use fr::Fr;
 pub type Scalar = Fr;
 
 const FR_MODULUS_BYTES: [u8; 32] = [
-    183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52, 1, 1, 59,
-    103, 6, 169, 175, 51, 101, 234, 180, 125, 14,
+    183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166,
+    0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14,
 ];
 
 /// This represents a Jubjub point in the affine `(x, y)`
@@ -97,12 +103,12 @@ impl ConditionallySelectable for AffinePoint {
 /// The point is then reduced according to the prime field. We need only to
 /// state the coordinates, so users can exploit its properties
 /// which are proven by tests, checking:
-/// - It lies on the curve,  
+/// - It lies on the curve,
 /// - Is of prime order,
 /// - Is not the identity point.
-///            
-/// Using: x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca,
-///        y = 0x0000000000000000000000000000000000000000000000000000000000000012,
+/// Using:
+///     x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca
+//      y = 0x0000000000000000000000000000000000000000000000000000000000000012
 pub const GENERATOR: AffinePoint = AffinePoint {
     x: Fq::from_raw([
         0x4df7b7ffec7beaca,
@@ -118,11 +124,11 @@ pub const GENERATOR: AffinePoint = AffinePoint {
     ]),
 };
 
-// 202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46, 230, 204, 214,
-//         15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
+// 202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46,
+// 230, 204, 214,15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
 
-//         18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-//         0, 0,
+// 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// 0, 0, 0, 0, 0, 0, 0,
 
 /// This represents an extended point `(X, Y, Z, T1, T2)`
 /// with `Z` nonzero, corresponding to the affine point
@@ -265,7 +271,9 @@ impl AffineNielsPoint {
         for bit in by
             .iter()
             .rev()
-            .flat_map(|byte| (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8)))
+            .flat_map(|byte| {
+                (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8))
+            })
             .skip(4)
         {
             acc = acc.double();
@@ -296,7 +304,11 @@ impl ConditionallySelectable for AffineNielsPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         AffineNielsPoint {
             y_plus_x: Fq::conditional_select(&a.y_plus_x, &b.y_plus_x, choice),
-            y_minus_x: Fq::conditional_select(&a.y_minus_x, &b.y_minus_x, choice),
+            y_minus_x: Fq::conditional_select(
+                &a.y_minus_x,
+                &b.y_minus_x,
+                choice,
+            ),
             t2d: Fq::conditional_select(&a.t2d, &b.t2d, choice),
         }
     }
@@ -316,7 +328,11 @@ impl ConditionallySelectable for ExtendedNielsPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         ExtendedNielsPoint {
             y_plus_x: Fq::conditional_select(&a.y_plus_x, &b.y_plus_x, choice),
-            y_minus_x: Fq::conditional_select(&a.y_minus_x, &b.y_minus_x, choice),
+            y_minus_x: Fq::conditional_select(
+                &a.y_minus_x,
+                &b.y_minus_x,
+                choice,
+            ),
             z: Fq::conditional_select(&a.z, &b.z, choice),
             t2d: Fq::conditional_select(&a.t2d, &b.t2d, choice),
         }
@@ -349,7 +365,9 @@ impl ExtendedNielsPoint {
         for bit in by
             .iter()
             .rev()
-            .flat_map(|byte| (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8)))
+            .flat_map(|byte| {
+                (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8))
+            })
             .skip(4)
         {
             acc = acc.double();
@@ -464,16 +482,19 @@ impl AffinePoint {
 
             let y2 = y.square();
 
-            ((y2 - Fq::one()) * ((Fq::one() + EDWARDS_D * &y2).invert().unwrap_or(Fq::zero())))
-                .sqrt()
-                .and_then(|x| {
-                    // Fix the sign of `x` if necessary
-                    let flip_sign = Choice::from((x.to_bytes()[0] ^ sign) & 1);
-                    let x_negated = -x;
-                    let final_x = Fq::conditional_select(&x, &x_negated, flip_sign);
+            ((y2 - Fq::one())
+                * ((Fq::one() + EDWARDS_D * &y2)
+                    .invert()
+                    .unwrap_or(Fq::zero())))
+            .sqrt()
+            .and_then(|x| {
+                // Fix the sign of `x` if necessary
+                let flip_sign = Choice::from((x.to_bytes()[0] ^ sign) & 1);
+                let x_negated = -x;
+                let final_x = Fq::conditional_select(&x, &x_negated, flip_sign);
 
-                    CtOption::new(AffinePoint { x: final_x, y }, Choice::from(1u8))
-                })
+                CtOption::new(AffinePoint { x: final_x, y }, Choice::from(1u8))
+            })
         })
     }
 
@@ -666,11 +687,15 @@ impl ExtendedPoint {
         // Y = YYmXX * YYXX
         // Z = YYmXX * J
         //
-        // We wish to obtain two factors of T = XY/Z.
+        // We wish to obtain two factors of T = XY / Z.
         //
-        // XY/Z = (XY2 - YYpXX) * (ZZ2 - VVmUU) * YYmXX * YYpXX / YYmXX / (ZZ2 - YYmXX)
-        //      = (XY2 - YYpXX) * YYmXX * YYpXX / YYmXX
-        //      = (XY2 - YYpXX) * YYpXX
+        // XY / Z
+        // =
+        // (XY2 - YYpXX) * (ZZ2 - VVmUU) * YYmXX * YYpXX / YYmXX / (ZZ2 - YYmXX)
+        // =
+        // (XY2 - YYpXX) * YYmXX * YYpXX / YYmXX
+        // =
+        // (XY2 - YYpXX) * YYpXX
         //
         // and so we have that T1 = (XY2 - YYpXX) and T2 = YYpXX.
 
@@ -921,7 +946,9 @@ impl Default for ExtendedPoint {
 /// slice.
 ///
 /// This costs 5 multiplications per element, and a field inversion.
-pub fn batch_normalize<'a>(y: &'a mut [ExtendedPoint]) -> impl Iterator<Item = AffinePoint> + 'a {
+pub fn batch_normalize<'a>(
+    y: &'a mut [ExtendedPoint],
+) -> impl Iterator<Item = AffinePoint> + 'a {
     let mut acc = Fq::one();
     for p in y.iter_mut() {
         // We use the `t1` field of `ExtendedPoint` to store the product
@@ -1073,7 +1100,8 @@ fn test_batch_normalize() {
         assert!(p.is_on_curve_vartime());
     }
 
-    let expected: std::vec::Vec<_> = y.iter().map(|p| AffinePoint::from(*p)).collect();
+    let expected: std::vec::Vec<_> =
+        y.iter().map(|p| AffinePoint::from(*p)).collect();
     let result1: std::vec::Vec<_> = batch_normalize(&mut y).collect();
     for i in 0..10 {
         assert!(expected[i] == result1[i]);
@@ -1162,7 +1190,12 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([0x1000000000000, 0xec03000276030000, 0x8d51ccce760304d0, 0x0]),
+        Fq::from_raw([
+            0x1000000000000,
+            0xec03000276030000,
+            0x8d51ccce760304d0,
+            0x0,
+        ]),
         Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
     ),
     AffinePoint::from_raw_unchecked(
@@ -1318,68 +1351,84 @@ fn test_serialization_consistency() {
 
     let y = vec![
         [
-            203, 85, 12, 213, 56, 234, 12, 193, 19, 132, 128, 64, 142, 110, 170, 185, 179, 108, 97,
-            63, 13, 211, 247, 120, 79, 219, 110, 234, 131, 123, 19, 215,
+            203, 85, 12, 213, 56, 234, 12, 193, 19, 132, 128, 64, 142, 110,
+            170, 185, 179, 108, 97, 63, 13, 211, 247, 120, 79, 219, 110, 234,
+            131, 123, 19, 215,
         ],
         [
-            113, 154, 240, 230, 224, 198, 208, 170, 104, 15, 59, 126, 151, 222, 233, 195, 203, 195,
-            167, 129, 89, 121, 240, 142, 51, 166, 64, 250, 184, 202, 154, 177,
+            113, 154, 240, 230, 224, 198, 208, 170, 104, 15, 59, 126, 151, 222,
+            233, 195, 203, 195, 167, 129, 89, 121, 240, 142, 51, 166, 64, 250,
+            184, 202, 154, 177,
         ],
         [
-            197, 41, 93, 209, 203, 55, 164, 174, 88, 0, 90, 199, 1, 156, 149, 141, 240, 29, 14, 82,
-            86, 225, 126, 129, 186, 157, 148, 162, 219, 51, 156, 199,
+            197, 41, 93, 209, 203, 55, 164, 174, 88, 0, 90, 199, 1, 156, 149,
+            141, 240, 29, 14, 82, 86, 225, 126, 129, 186, 157, 148, 162, 219,
+            51, 156, 199,
         ],
         [
-            182, 117, 250, 241, 81, 196, 199, 227, 151, 74, 243, 17, 221, 97, 200, 139, 192, 83,
-            231, 35, 214, 14, 95, 69, 130, 201, 4, 116, 177, 19, 179, 0,
+            182, 117, 250, 241, 81, 196, 199, 227, 151, 74, 243, 17, 221, 97,
+            200, 139, 192, 83, 231, 35, 214, 14, 95, 69, 130, 201, 4, 116, 177,
+            19, 179, 0,
         ],
         [
-            118, 41, 29, 200, 60, 189, 119, 252, 78, 40, 230, 18, 208, 221, 38, 214, 176, 250, 4,
-            10, 77, 101, 26, 216, 193, 198, 226, 84, 25, 177, 230, 185,
+            118, 41, 29, 200, 60, 189, 119, 252, 78, 40, 230, 18, 208, 221, 38,
+            214, 176, 250, 4, 10, 77, 101, 26, 216, 193, 198, 226, 84, 25, 177,
+            230, 185,
         ],
         [
-            226, 189, 227, 208, 112, 117, 136, 98, 72, 38, 211, 167, 254, 82, 174, 113, 112, 166,
-            138, 171, 166, 113, 52, 251, 129, 197, 138, 45, 195, 7, 61, 140,
+            226, 189, 227, 208, 112, 117, 136, 98, 72, 38, 211, 167, 254, 82,
+            174, 113, 112, 166, 138, 171, 166, 113, 52, 251, 129, 197, 138, 45,
+            195, 7, 61, 140,
         ],
         [
-            38, 198, 156, 196, 146, 225, 55, 163, 138, 178, 157, 128, 115, 135, 204, 215, 0, 33,
-            171, 20, 60, 32, 142, 209, 33, 233, 125, 146, 207, 12, 16, 24,
+            38, 198, 156, 196, 146, 225, 55, 163, 138, 178, 157, 128, 115, 135,
+            204, 215, 0, 33, 171, 20, 60, 32, 142, 209, 33, 233, 125, 146, 207,
+            12, 16, 24,
         ],
         [
-            17, 187, 231, 83, 165, 36, 232, 184, 140, 205, 195, 252, 166, 85, 59, 86, 3, 226, 211,
-            67, 179, 29, 238, 181, 102, 142, 58, 63, 57, 89, 174, 138,
+            17, 187, 231, 83, 165, 36, 232, 184, 140, 205, 195, 252, 166, 85,
+            59, 86, 3, 226, 211, 67, 179, 29, 238, 181, 102, 142, 58, 63, 57,
+            89, 174, 138,
         ],
         [
-            210, 159, 80, 16, 181, 39, 221, 204, 224, 144, 145, 79, 54, 231, 8, 140, 142, 216, 93,
-            190, 183, 116, 174, 63, 33, 242, 177, 118, 148, 40, 241, 203,
+            210, 159, 80, 16, 181, 39, 221, 204, 224, 144, 145, 79, 54, 231, 8,
+            140, 142, 216, 93, 190, 183, 116, 174, 63, 33, 242, 177, 118, 148,
+            40, 241, 203,
         ],
         [
-            0, 143, 107, 102, 149, 187, 27, 124, 18, 10, 98, 28, 113, 123, 121, 185, 29, 152, 14,
-            130, 149, 28, 87, 35, 135, 135, 153, 54, 112, 53, 54, 68,
+            0, 143, 107, 102, 149, 187, 27, 124, 18, 10, 98, 28, 113, 123, 121,
+            185, 29, 152, 14, 130, 149, 28, 87, 35, 135, 135, 153, 54, 112, 53,
+            54, 68,
         ],
         [
-            178, 131, 85, 160, 214, 51, 208, 157, 196, 152, 247, 93, 202, 56, 81, 239, 155, 122,
-            59, 188, 237, 253, 11, 169, 208, 236, 12, 4, 163, 211, 88, 97,
+            178, 131, 85, 160, 214, 51, 208, 157, 196, 152, 247, 93, 202, 56,
+            81, 239, 155, 122, 59, 188, 237, 253, 11, 169, 208, 236, 12, 4,
+            163, 211, 88, 97,
         ],
         [
-            246, 194, 231, 195, 159, 101, 180, 133, 80, 21, 185, 220, 195, 115, 144, 12, 90, 150,
-            44, 117, 8, 156, 168, 248, 206, 41, 60, 82, 67, 75, 57, 67,
+            246, 194, 231, 195, 159, 101, 180, 133, 80, 21, 185, 220, 195, 115,
+            144, 12, 90, 150, 44, 117, 8, 156, 168, 248, 206, 41, 60, 82, 67,
+            75, 57, 67,
         ],
         [
-            212, 205, 171, 153, 113, 16, 194, 241, 224, 43, 177, 110, 190, 248, 22, 201, 208, 166,
-            2, 83, 134, 130, 85, 129, 166, 136, 185, 191, 163, 38, 54, 10,
+            212, 205, 171, 153, 113, 16, 194, 241, 224, 43, 177, 110, 190, 248,
+            22, 201, 208, 166, 2, 83, 134, 130, 85, 129, 166, 136, 185, 191,
+            163, 38, 54, 10,
         ],
         [
-            8, 60, 190, 39, 153, 222, 119, 23, 142, 237, 12, 110, 146, 9, 19, 219, 143, 64, 161,
-            99, 199, 77, 39, 148, 70, 213, 246, 227, 150, 178, 237, 178,
+            8, 60, 190, 39, 153, 222, 119, 23, 142, 237, 12, 110, 146, 9, 19,
+            219, 143, 64, 161, 99, 199, 77, 39, 148, 70, 213, 246, 227, 150,
+            178, 237, 178,
         ],
         [
-            11, 114, 217, 160, 101, 37, 100, 220, 56, 114, 42, 31, 138, 33, 84, 157, 214, 167, 73,
-            233, 115, 81, 124, 134, 15, 31, 181, 60, 184, 130, 175, 159,
+            11, 114, 217, 160, 101, 37, 100, 220, 56, 114, 42, 31, 138, 33, 84,
+            157, 214, 167, 73, 233, 115, 81, 124, 134, 15, 31, 181, 60, 184,
+            130, 175, 159,
         ],
         [
-            141, 238, 235, 202, 241, 32, 210, 10, 127, 230, 54, 31, 146, 80, 247, 9, 107, 124, 0,
-            26, 203, 16, 237, 34, 214, 147, 133, 15, 29, 236, 37, 88,
+            141, 238, 235, 202, 241, 32, 210, 10, 127, 230, 54, 31, 146, 80,
+            247, 9, 107, 124, 0, 26, 203, 16, 237, 34, 214, 147, 133, 15, 29,
+            236, 37, 88,
         ],
     ];
 

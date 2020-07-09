@@ -1,5 +1,6 @@
-//! This module provides an implementation of the Jubjub scalar field $\mathbb{F}_r$
-//! where `r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
+//! This module provides an implementation of the Jubjub scalar field
+//! $\mathbb{F}_r$ where `r =
+//! 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
 
 use core::ops::{Index, IndexMut};
 
@@ -11,9 +12,10 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::util::{adc, mac, sbb};
+use crate::Fq;
 
-/// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub elliptic
-/// curve construction.
+/// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub
+/// elliptic curve construction.
 // The internal representation of this type is four 64-bit unsigned
 // integers in little-endian order. Elements of Fr are always in
 // Montgomery form; i.e., Fr(a) = aR mod r, with R = 2^256.
@@ -44,6 +46,27 @@ impl From<i8> for Fr {
             (false, true) => -Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
             (_, _) => unreachable!(),
         }
+    }
+}
+
+impl From<Fr> for Fq {
+    fn from(scalar: Fr) -> Fq {
+        let bls_scalar = Fq::from_bytes(&scalar.to_bytes());
+
+        // The order of a JubJub's Scalar field is shorter than a BLS Scalar,
+        // so convert any jubjub scalar to a BLS' Scalar should always be
+        // safe.
+        //
+        // But just in case, a specific error message is provided; instead of
+        // relying on `unwrap`'s generic error.
+        // Unfortunately Constant Time Option doesn't support `expect`, and
+        // `unwrap_or_else` for this type always execute the `else` part, so
+        // it cannot be used.
+        if bls_scalar.is_none().into() {
+            panic!("Failed to convert a Scalar from JubJub to BLS");
+        }
+
+        bls_scalar.unwrap()
     }
 }
 
@@ -280,7 +303,9 @@ impl Fr {
     pub fn to_bytes(&self) -> [u8; 32] {
         // Turn into canonical form by computing
         // (a.R) / R = a
-        let tmp = Fr::montgomery_reduce(self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0);
+        let tmp = Fr::montgomery_reduce(
+            self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0,
+        );
 
         let mut res = [0; 32];
         res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
@@ -307,19 +332,22 @@ impl Fr {
     }
 
     fn from_u512(limbs: [u64; 8]) -> Fr {
-        // We reduce an arbitrary 512-bit number by decomposing it into two 256-bit digits
-        // with the higher bits multiplied by 2^256. Thus, we perform two reductions
+        // We reduce an arbitrary 512-bit number by decomposing it into two
+        // 256-bit digits with the higher bits multiplied by 2^256.
+        // Thus, we perform two reductions
         //
         // 1. the lower bits are multiplied by R^2, as normal
         // 2. the upper bits are multiplied by R^2 * 2^256 = R^3
         //
-        // and computing their sum in the field. It remains to see that arbitrary 256-bit
-        // numbers can be placed into Montgomery form safely using the reduction. The
-        // reduction works so long as the product is less than R=2^256 multiplied by
-        // the modulus. This holds because for any `c` smaller than the modulus, we have
-        // that (2^256 - 1)*c is an acceptable product for the reduction. Therefore, the
-        // reduction always works so long as `c` is in the field; in this case it is either the
-        // constant `R2` or `R3`.
+        // and computing their sum in the field. It remains to see that
+        // arbitrary 256-bit numbers can be placed into Montgomery form
+        // safely using the reduction. The reduction works so long as
+        // the product is less than R=2^256 multiplied by the modulus.
+        // This holds because for any `c` smaller than the modulus, we have
+        // that (2^256 - 1)*c is an acceptable product for the reduction.
+        // Therefore, the reduction always works so long as `c` is in
+        // the field; in this case it is either the constant `R2` or
+        // `R3`.
         let d0 = Fr([limbs[0], limbs[1], limbs[2], limbs[3]]);
         let d1 = Fr([limbs[4], limbs[5], limbs[6], limbs[7]]);
         // Convert to Montgomery form
@@ -378,7 +406,8 @@ impl Fr {
 
         CtOption::new(
             sqrt,
-            (&sqrt * &sqrt).ct_eq(self), // Only return Some if it's the square root.
+            (&sqrt * &sqrt).ct_eq(self), /* Only return Some if it's the
+                                          * square root. */
         )
     }
 
@@ -606,8 +635,9 @@ impl Fr {
         let (d2, borrow) = sbb(self.0[2], rhs.0[2], borrow);
         let (d3, borrow) = sbb(self.0[3], rhs.0[3], borrow);
 
-        // If underflow occurred on the final limb, borrow = 0xfff...fff, otherwise
-        // borrow = 0x000...000. Thus, we use it as a mask to conditionally add the modulus.
+        // If underflow occurred on the final limb, borrow = 0xfff...fff,
+        // otherwise borrow = 0x000...000. Thus, we use it as a mask to
+        // conditionally add the modulus.
         let (d0, carry) = adc(d0, MODULUS.0[0] & borrow, 0);
         let (d1, carry) = adc(d1, MODULUS.0[1] & borrow, carry);
         let (d2, carry) = adc(d2, MODULUS.0[2] & borrow, carry);
@@ -642,7 +672,9 @@ impl Fr {
 
         // `tmp` could be `MODULUS` if `self` was zero. Create a mask that is
         // zero if `self` was zero, and `u64::max_value()` if self was nonzero.
-        let mask = (((self.0[0] | self.0[1] | self.0[2] | self.0[3]) == 0) as u64).wrapping_sub(1);
+        let mask = (((self.0[0] | self.0[1] | self.0[2] | self.0[3]) == 0)
+            as u64)
+            .wrapping_sub(1);
 
         Fr([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
     }
@@ -762,32 +794,34 @@ fn test_to_bytes() {
     assert_eq!(
         Fr::zero().to_bytes(),
         [
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         ]
     );
 
     assert_eq!(
         Fr::one().to_bytes(),
         [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         ]
     );
 
     assert_eq!(
         R2.to_bytes(),
         [
-            217, 7, 150, 185, 179, 11, 248, 37, 80, 231, 182, 102, 47, 214, 21, 243, 244, 20, 136,
-            235, 238, 20, 37, 147, 198, 85, 145, 71, 111, 252, 166, 9
+            217, 7, 150, 185, 179, 11, 248, 37, 80, 231, 182, 102, 47, 214, 21,
+            243, 244, 20, 136, 235, 238, 20, 37, 147, 198, 85, 145, 71, 111,
+            252, 166, 9
         ]
     );
 
     assert_eq!(
         (-&Fr::one()).to_bytes(),
         [
-            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52,
-            1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
+            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
         ]
     );
 }
@@ -796,8 +830,8 @@ fn test_to_bytes() {
 fn test_from_bytes() {
     assert_eq!(
         Fr::from_bytes(&[
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         ])
         .unwrap(),
         Fr::zero()
@@ -805,8 +839,8 @@ fn test_from_bytes() {
 
     assert_eq!(
         Fr::from_bytes(&[
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         ])
         .unwrap(),
         Fr::one()
@@ -814,8 +848,9 @@ fn test_from_bytes() {
 
     assert_eq!(
         Fr::from_bytes(&[
-            217, 7, 150, 185, 179, 11, 248, 37, 80, 231, 182, 102, 47, 214, 21, 243, 244, 20, 136,
-            235, 238, 20, 37, 147, 198, 85, 145, 71, 111, 252, 166, 9
+            217, 7, 150, 185, 179, 11, 248, 37, 80, 231, 182, 102, 47, 214, 21,
+            243, 244, 20, 136, 235, 238, 20, 37, 147, 198, 85, 145, 71, 111,
+            252, 166, 9
         ])
         .unwrap(),
         R2
@@ -824,8 +859,9 @@ fn test_from_bytes() {
     // -1 should work
     assert!(
         Fr::from_bytes(&[
-            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52,
-            1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
+            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
         ])
         .is_some()
         .unwrap_u8()
@@ -835,8 +871,9 @@ fn test_from_bytes() {
     // modulus is invalid
     assert!(
         Fr::from_bytes(&[
-            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52,
-            1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
+            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
         ])
         .is_none()
         .unwrap_u8()
@@ -846,8 +883,9 @@ fn test_from_bytes() {
     // Anything larger than the modulus is invalid
     assert!(
         Fr::from_bytes(&[
-            184, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52,
-            1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
+            184, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
         ])
         .is_none()
         .unwrap_u8()
@@ -856,8 +894,9 @@ fn test_from_bytes() {
 
     assert!(
         Fr::from_bytes(&[
-            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52,
-            1, 1, 59, 104, 6, 169, 175, 51, 101, 234, 180, 125, 14
+            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 104, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
         ])
         .is_none()
         .unwrap_u8()
@@ -866,8 +905,9 @@ fn test_from_bytes() {
 
     assert!(
         Fr::from_bytes(&[
-            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52,
-            1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 15
+            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 15
         ])
         .is_none()
         .unwrap_u8()
@@ -907,7 +947,10 @@ fn test_from_u512_max() {
     let max_u64 = 0xffffffffffffffff;
     assert_eq!(
         R3 - R,
-        Fr::from_u512([max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64])
+        Fr::from_u512([
+            max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64,
+            max_u64
+        ])
     );
 }
 
@@ -916,9 +959,10 @@ fn test_from_bytes_wide_r2() {
     assert_eq!(
         R2,
         Fr::from_bytes_wide(&[
-            217, 7, 150, 185, 179, 11, 248, 37, 80, 231, 182, 102, 47, 214, 21, 243, 244, 20, 136,
-            235, 238, 20, 37, 147, 198, 85, 145, 71, 111, 252, 166, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            217, 7, 150, 185, 179, 11, 248, 37, 80, 231, 182, 102, 47, 214, 21,
+            243, 244, 20, 136, 235, 238, 20, 37, 147, 198, 85, 145, 71, 111,
+            252, 166, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ])
     );
 }
@@ -928,9 +972,10 @@ fn test_from_bytes_wide_negative_one() {
     assert_eq!(
         -&Fr::one(),
         Fr::from_bytes_wide(&[
-            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104, 166, 0, 59, 52,
-            1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ])
     );
 }
@@ -1022,12 +1067,9 @@ fn test_multiplication() {
         tmp *= &cur;
 
         let mut tmp2 = Fr::zero();
-        for b in cur
-            .to_bytes()
-            .iter()
-            .rev()
-            .flat_map(|byte| (0..8).rev().map(move |i| ((byte >> i) & 1u8) == 1u8))
-        {
+        for b in cur.to_bytes().iter().rev().flat_map(|byte| {
+            (0..8).rev().map(move |i| ((byte >> i) & 1u8) == 1u8)
+        }) {
             let tmp3 = tmp2;
             tmp2.add_assign(&tmp3);
 
@@ -1051,12 +1093,9 @@ fn test_squaring() {
         tmp = tmp.square();
 
         let mut tmp2 = Fr::zero();
-        for b in cur
-            .to_bytes()
-            .iter()
-            .rev()
-            .flat_map(|byte| (0..8).rev().map(move |i| ((byte >> i) & 1u8) == 1u8))
-        {
+        for b in cur.to_bytes().iter().rev().flat_map(|byte| {
+            (0..8).rev().map(move |i| ((byte >> i) & 1u8) == 1u8)
+        }) {
             let tmp3 = tmp2;
             tmp2.add_assign(&tmp3);
 
@@ -1162,8 +1201,8 @@ fn test_from_raw() {
 fn w_naf() {
     let fr = Fr::from(1122334455u64);
     let naf3_fr = [
-        -1i8, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0, 0, -1, 0, 0, 3, 0, 0, 0,
-        0, 0, 1,
+        -1i8, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0, 0,
+        -1, 0, 0, 3, 0, 0, 0, 0, 0, 1,
     ];
     let computed = fr.compute_windowed_naf(3);
     let mut buf = [0i8; 31];
