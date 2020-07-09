@@ -2,6 +2,7 @@ mod common;
 
 use core::ops::Mul;
 
+use crate::Fq;
 use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
 use jubjub::*;
 
@@ -135,4 +136,35 @@ fn test_dhke() {
         assert_eq!(dhke(&a, &b_g), dhke(&b, &a_g));
         assert_ne!(dhke(&a, &b_g), dhke(&b, &b_g));
     }
+}
+#[test]
+fn test_from_jubjub_to_bls_scalar() {
+    assert_eq!(
+        Fq::zero(),
+        Fq::from(Fr::zero()),
+        "Scalar conversion from JubJub's zero to BLS' zero"
+    );
+    assert_eq!(
+        Fq::one(),
+        Fq::from(Fr::one()),
+        "Scalar conversion from JubJub's one to BLS' one"
+    );
+
+    let jubjub_scalar = -Fr::one();
+    let bls_scalar = Fq::from(jubjub_scalar);
+
+    assert_eq!(
+        jubjub_scalar.to_bytes(),
+        bls_scalar.to_bytes(),
+        "Scalar conversion from JubJub's maximum number to BLS"
+    );
+
+    let bls_scalar = Fq::from(77u64);
+    let jubjub_scalar = Fr::from(77u64);
+
+    assert_eq!(
+        bls_scalar,
+        Fq::from(jubjub_scalar),
+        "Scalar conversion from an arbitrary JubJub's number to BLS"
+    );
 }
