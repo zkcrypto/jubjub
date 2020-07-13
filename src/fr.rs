@@ -56,15 +56,10 @@ impl From<Fr> for Fq {
         // The order of a JubJub's Scalar field is shorter than a BLS Scalar,
         // so convert any jubjub scalar to a BLS' Scalar should always be
         // safe.
-        //
-        // But just in case, a specific error message is provided; instead of
-        // relying on `unwrap`'s generic error.
-        // Unfortunately Constant Time Option doesn't support `expect`, and
-        // `unwrap_or_else` for this type always execute the `else` part, so
-        // it cannot be used.
-        if bls_scalar.is_none().into() {
-            panic!("Failed to convert a Scalar from JubJub to BLS");
-        }
+        assert!(
+            bool::from(bls_scalar.is_some()),
+            "Failed to convert a Scalar from JubJub to BLS"
+        );
 
         bls_scalar.unwrap()
     }
@@ -72,17 +67,14 @@ impl From<Fr> for Fq {
 
 impl ConstantTimeEq for Fr {
     fn ct_eq(&self, other: &Self) -> Choice {
-        self.0[0].ct_eq(&other.0[0])
-            & self.0[1].ct_eq(&other.0[1])
-            & self.0[2].ct_eq(&other.0[2])
-            & self.0[3].ct_eq(&other.0[3])
+        self.0.ct_eq(&other.0)
     }
 }
 
 impl PartialEq for Fr {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other).unwrap_u8() == 1
+        self.ct_eq(other).into()
     }
 }
 
