@@ -3,19 +3,19 @@ authors = [
     "Sean Bowe <ewillbefull@gmail.com>",
     "Eirik Ogilvie-Wigley <eowigley@gmail.com>",
     "Jack Grigg <thestr4d@gmail.com>",
+    "CPerezz <carlos@dusk.network>"
 ]
-description = "Implementation of the Jubjub elliptic curve group"
-documentation = "https://docs.rs/jubjub/"
-homepage = "https://github.com/zkcrypto/jubjub"
+description = "Dusk's fork of the implementation of the Jubjub elliptic curve group"
+documentation = "https://github.com/dusk-network/jubjub"
+homepage = "https://github.com/dusk-network/jubjub"
 license = "MIT/Apache-2.0"
-name = "jubjub"
-repository = "https://github.com/zkcrypto/jubjub"
-version = "0.3.0"
+name = "dusk-jubjub"
+repository = "https://github.com/dusk-network/jubjub"
+version = "0.3.1"
 edition = "2018"
 
-[dependencies.dusk-bls12_381]
-tag = "0.1.2"
-# default-features = false
+[dependencies]
+dusk-bls12_381 = {git = "https://github.com/dusk-network/bls12_381", tag = "0.1.2"}
 
 [dependencies.subtle]
 version = "^2.2.1"
