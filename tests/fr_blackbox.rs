@@ -4,7 +4,7 @@ use core::ops::Mul;
 
 use crate::Fq;
 use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
-use jubjub::*;
+use dusk_jubjub::*;
 
 #[test]
 fn test_to_and_from_bytes() {

@@ -9,6 +9,8 @@ use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use rand_core::{CryptoRng, RngCore};
+
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::util::{adc, mac, sbb};
@@ -382,6 +384,21 @@ impl Fr {
         let (r7, _) = adc(0, r7, carry);
 
         Fr::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /// Generate a valid Scalar choosen uniformly using user-
+    /// provided rng.
+    ///
+    /// By `rng` we mean any Rng that implements: `Rng` + `CryptoRng`.
+    pub fn random<T>(rand: &mut T) -> Fr
+    where
+        T: RngCore + CryptoRng,
+    {
+        let mut bytes = [0u8; 32];
+        rand.fill_bytes(&mut bytes);
+        // Ensure that the value is lower than `L`.
+        bytes[31] &= 0b0000_0001;
+        Fr::from_bytes(&bytes).unwrap_or_else(|| Fr::random(rand))
     }
 
     /// Computes the square root of this element, if it exists.
