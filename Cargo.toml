@@ -12,10 +12,15 @@ license = "MIT/Apache-2.0"
 name = "dusk-jubjub"
 repository = "https://github.com/dusk-network/jubjub"
 version = "0.3.1"
+keywords = ["cryptography", "jubjub", "zk-snarks", "ecc", "elliptic-curve"]
+categories =["algorithms", "cryptography", "science"]
 edition = "2018"
+exclude = [".github/workflows/ci.yml",
+".gitignore", 
+]
 
 [dependencies]
-dusk-bls12_381 = {git = "https://github.com/dusk-network/bls12_381", tag = "0.1.2"}
+dusk-bls12_381 = "0.1.2"
 
 [dependencies.subtle]
 version = "^2.2.1"
