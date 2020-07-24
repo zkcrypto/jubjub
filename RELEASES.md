@@ -1,3 +1,18 @@
+# 0.3.2
+### Add
+- Add GENERATOR_NUMS & export it.
+
+# 0.3.1
+### Add
+- Export curve-generator.
+- Add getters for point coordinates in AffinePoint and ExtendedPoint.
+- Implement DHKE functionality.
+- Implement random for Fr.
+- Implement WNaf for Fr
+
+### Remove
+* Remove the #[no_std] compatibility.
+
 # 0.3.0
 
 This release now depends on the `bls12_381` crate, which exposes the `Fq` field type that we re-export.
