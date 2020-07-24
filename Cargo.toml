@@ -21,6 +21,7 @@ exclude = [".github/workflows/ci.yml",
 
 [dependencies]
 dusk-bls12_381 = "0.1.2"
+blake2 = "0.9.0"
 
 [dependencies.subtle]
 version = "^2.2.1"

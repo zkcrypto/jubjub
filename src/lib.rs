@@ -124,6 +124,24 @@ pub const GENERATOR: AffinePoint = AffinePoint {
     ]),
 };
 
+/// GENERATOR NUMS which is obtained following the specs in:
+/// https://app.gitbook.com/@dusk-network/s/specs/specifications/poseidon/pedersen-commitment-scheme
+/// The counter = 18 and the hash function used to compute it was blake2b
+pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
+    x: Fq::from_raw([
+        0x5e67b8f316f414f7,
+        0xbd9514c773fd4456,
+        0x931e316a39fe4541,
+        0x921710179df76377,
+    ]),
+    y: Fq::from_raw([
+        0x43d80eb3b2f3eb1b,
+        0x7b162dbeeb3b34fd,
+        0x9949ba0f82a5507a,
+        0x6705b707162e3ef8,
+    ]),
+};
+
 // 202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46,
 // 230, 204, 214,15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
 
@@ -1005,6 +1023,14 @@ fn test_affine_point_generator_is_not_identity() {
 }
 
 #[test]
+fn test_affine_point_generator_nums_is_not_identity() {
+    assert_ne!(
+        ExtendedPoint::from(GENERATOR_NUMS.mul_by_cofactor()),
+        ExtendedPoint::identity()
+    );
+}
+
+#[test]
 fn test_d_is_non_quadratic_residue() {
     assert!(EDWARDS_D.sqrt().is_none().unwrap_u8() == 1);
     assert!((-EDWARDS_D).sqrt().is_none().unwrap_u8() == 1);
@@ -1272,6 +1298,36 @@ fn find_curve_generator() {
 fn test_small_order() {
     for point in EIGHT_TORSION.iter() {
         assert!(point.is_small_order().unwrap_u8() == 1);
+    }
+}
+
+#[ignore]
+#[test]
+fn second_gen_nums() {
+    use blake2::{Blake2b, Digest};
+    let generator_bytes = GENERATOR.to_bytes();
+    let mut counter = 0u64;
+    let mut array = [0u8; 32];
+    loop {
+        let mut hasher = Blake2b::new();
+        hasher.update(generator_bytes);
+        hasher.update(counter.to_le_bytes());
+        let res = hasher.finalize();
+        array.copy_from_slice(&res[0..32]);
+        if AffinePoint::from_bytes(array.clone()).is_some().into()
+            && AffinePoint::from_bytes(array)
+                .unwrap()
+                .is_prime_order()
+                .unwrap_u8()
+                == 1
+        {
+            panic!(
+                "POINT! {:?} at counter: {}",
+                AffinePoint::from_bytes(array).unwrap(),
+                counter
+            )
+        }
+        counter += 1;
     }
 }
 
