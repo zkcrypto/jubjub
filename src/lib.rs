@@ -1301,6 +1301,7 @@ fn test_small_order() {
     }
 }
 
+#[ignore]
 #[test]
 fn second_gen_nums() {
     use blake2::{Blake2b, Digest};
