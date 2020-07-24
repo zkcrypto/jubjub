@@ -1321,9 +1321,11 @@ fn second_gen_nums() {
                 .unwrap_u8()
                 == 1
         {
-            println!("POINT! {:?}", AffinePoint::from_bytes(array).unwrap());
-            println!("{}", counter);
-            panic!()
+            panic!(
+                "POINT! {:?} at counter: {}",
+                AffinePoint::from_bytes(array).unwrap(),
+                counter
+            )
         }
         counter += 1;
     }
