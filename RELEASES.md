@@ -1,6 +1,10 @@
-# 0.3.2
+# 0.3.3 [yanked]
+### Fix
+- Fix `GENERATOR_NUMS` value and add tests to check it's correct.
+
+# 0.3.2 [yanked]
 ### Add
-- Add GENERATOR_NUMS & export it.
+- Add `GENERATOR_NUMS` & export it.
 
 # 0.3.1
 ### Add
