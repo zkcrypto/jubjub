@@ -1,4 +1,4 @@
-# 0.3.3 [yanked]
+# 0.3.3
 ### Fix
 - Fix `GENERATOR_NUMS` value and add tests to check it's correct.
 
