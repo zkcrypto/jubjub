@@ -127,18 +127,21 @@ pub const GENERATOR: AffinePoint = AffinePoint {
 /// GENERATOR NUMS which is obtained following the specs in:
 /// https://app.gitbook.com/@dusk-network/s/specs/specifications/poseidon/pedersen-commitment-scheme
 /// The counter = 18 and the hash function used to compute it was blake2b
+/// Using:
+///     x = 0x5e67b8f316f414f7bd9514c773fd4456931e316a39fe4541921710179df76377
+//      y = 0x43d80eb3b2f3eb1b7b162dbeeb3b34fd9949ba0f82a5507a6705b707162e3ef8
 pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
     x: Fq::from_raw([
-        0x5e67b8f316f414f7,
-        0xbd9514c773fd4456,
-        0x931e316a39fe4541,
         0x921710179df76377,
+        0x931e316a39fe4541,
+        0xbd9514c773fd4456,
+        0x5e67b8f316f414f7,
     ]),
     y: Fq::from_raw([
-        0x43d80eb3b2f3eb1b,
-        0x7b162dbeeb3b34fd,
-        0x9949ba0f82a5507a,
         0x6705b707162e3ef8,
+        0x9949ba0f82a5507a,
+        0x7b162dbeeb3b34fd,
+        0x43d80eb3b2f3eb1b,
     ]),
 };
 
@@ -1015,6 +1018,11 @@ fn test_affine_point_generator_has_order_p() {
 }
 
 #[test]
+fn test_affine_point_generator_nums_has_order_p() {
+    assert_eq!(GENERATOR_NUMS.is_prime_order().unwrap_u8(), 1);
+}
+
+#[test]
 fn test_affine_point_generator_is_not_identity() {
     assert_ne!(
         ExtendedPoint::from(GENERATOR.mul_by_cofactor()),
@@ -1321,11 +1329,7 @@ fn second_gen_nums() {
                 .unwrap_u8()
                 == 1
         {
-            panic!(
-                "POINT! {:?} at counter: {}",
-                AffinePoint::from_bytes(array).unwrap(),
-                counter
-            )
+            assert!(GENERATOR_NUMS == AffinePoint::from_bytes(array).unwrap());
         }
         counter += 1;
     }
