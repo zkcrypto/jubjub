@@ -1,3 +1,7 @@
+# 0.3.5
+### Fix
+- Issue #25 JubJub random function causes stack overflow.
+
 # 0.3.4
 ### Fix
 - Fix `dhke` to return an elliptic curve point instead of scalar.
