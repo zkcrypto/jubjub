@@ -398,7 +398,12 @@ impl Fr {
         rand.fill_bytes(&mut bytes);
         // Ensure that the value is lower than `L`.
         bytes[31] &= 0b0000_0001;
-        Fr::from_bytes(&bytes).unwrap_or_else(|| Fr::random(rand))
+
+        Fr::from_bytes(&bytes).unwrap_or({
+            let mut bytes = [0u8; 64];
+            rand.fill_bytes(&mut bytes);
+            Fr::from_bytes_wide(&bytes)
+        })
     }
 
     /// Computes the square root of this element, if it exists.
