@@ -43,8 +43,11 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[macro_use]
 mod util;
-
 mod fr;
+
+/// Implementation of ElGamal encryption scheme with JubJub
+pub mod elgamal;
+
 pub use dusk_bls12_381::Scalar as Fq;
 pub use fr::Fr;
 
@@ -122,6 +125,15 @@ pub const GENERATOR: AffinePoint = AffinePoint {
         000000000000000000,
         000000000000,
     ]),
+};
+
+/// [`GENERATOR`] in [`ExtendedPoint`] form
+pub const GENERATOR_EXTENDED: ExtendedPoint = ExtendedPoint {
+    x: GENERATOR.x,
+    y: GENERATOR.y,
+    z: Fq::one(),
+    t1: GENERATOR.x,
+    t2: GENERATOR.y,
 };
 
 /// GENERATOR NUMS which is obtained following the specs in:
