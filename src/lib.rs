@@ -24,7 +24,7 @@
 
 #![no_std]
 // Catch documentation errors caused by code changes.
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
@@ -124,6 +124,15 @@ pub const GENERATOR: AffinePoint = AffinePoint {
     ]),
 };
 
+/// [`GENERATOR`] in [`ExtendedPoint`] form
+pub const GENERATOR_EXTENDED: ExtendedPoint = ExtendedPoint {
+    x: GENERATOR.x,
+    y: GENERATOR.y,
+    z: Fq::one(),
+    t1: GENERATOR.x,
+    t2: GENERATOR.y,
+};
+
 /// GENERATOR NUMS which is obtained following the specs in:
 /// https://app.gitbook.com/@dusk-network/s/specs/specifications/poseidon/pedersen-commitment-scheme
 /// The counter = 18 and the hash function used to compute it was blake2b
@@ -143,6 +152,15 @@ pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
         0x7b162dbeeb3b34fd,
         0x43d80eb3b2f3eb1b,
     ]),
+};
+
+/// [`GENERATOR_NUMS`] in [`ExtendedPoint`] form
+pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
+    x: GENERATOR_NUMS.x,
+    y: GENERATOR_NUMS.y,
+    z: Fq::one(),
+    t1: GENERATOR_NUMS.x,
+    t2: GENERATOR_NUMS.y,
 };
 
 // 202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46,
