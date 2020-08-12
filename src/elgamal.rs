@@ -60,7 +60,7 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 /// The multiplication is homomorphic with [`Fr`] scalars.
 ///
 /// Being `E` the encrypt and `D` the decrypt functions, here follows an example:
-/// `D[x * E(a + b)] == D{x * [E(a) + E(b)]}`
+/// `D{E[x * (a + b)]} == D{x * [E(a) + E(b)]}`
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct ElgamalCipher {
     gamma: ExtendedPoint,
