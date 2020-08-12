@@ -157,6 +157,15 @@ pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
     ]),
 };
 
+/// [`GENERATOR_NUMS`] in [`ExtendedPoint`] form
+pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
+    x: GENERATOR_NUMS.x,
+    y: GENERATOR_NUMS.y,
+    z: Fq::one(),
+    t1: GENERATOR_NUMS.x,
+    t2: GENERATOR_NUMS.y,
+};
+
 // 202, 234, 123, 236, 255, 183, 247, 77, 237, 84, 108, 253, 33, 187, 62, 46,
 // 230, 204, 214,15, 45, 240, 251, 241, 166, 101, 172, 67, 76, 129, 210, 63,
 
