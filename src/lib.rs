@@ -1056,7 +1056,7 @@ fn test_affine_point_generator_is_not_identity() {
 #[test]
 fn test_extended_point_generator_is_not_identity() {
     assert_ne!(
-       GENERATOR_EXTENDED.mul_by_cofactor(),
+        GENERATOR_EXTENDED.mul_by_cofactor(),
         ExtendedPoint::identity()
     );
 }
