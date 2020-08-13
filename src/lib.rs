@@ -1036,6 +1036,11 @@ fn test_affine_point_generator_has_order_p() {
 }
 
 #[test]
+fn test_extended_point_generator_has_order_p() {
+    assert_eq!(GENERATOR_EXTENDED.is_prime_order().unwrap_u8(), 1);
+}
+
+#[test]
 fn test_affine_point_generator_nums_has_order_p() {
     assert_eq!(GENERATOR_NUMS.is_prime_order().unwrap_u8(), 1);
 }
@@ -1044,6 +1049,14 @@ fn test_affine_point_generator_nums_has_order_p() {
 fn test_affine_point_generator_is_not_identity() {
     assert_ne!(
         ExtendedPoint::from(GENERATOR.mul_by_cofactor()),
+        ExtendedPoint::identity()
+    );
+}
+
+#[test]
+fn test_extended_point_generator_is_not_identity() {
+    assert_ne!(
+       GENERATOR_EXTENDED.mul_by_cofactor(),
         ExtendedPoint::identity()
     );
 }
