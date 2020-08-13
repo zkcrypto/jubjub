@@ -1,4 +1,4 @@
-use crate::{ExtendedPoint, Fr};
+use crate::{AffinePoint, ExtendedPoint, Fr};
 
 use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
@@ -101,6 +101,48 @@ impl ElgamalCipher {
     /// Perform the decryption with the provided secret.
     pub fn decrypt(&self, secret: &Fr) -> ExtendedPoint {
         self.delta - self.gamma * secret
+    }
+
+    /// Serialize the cipher into bytes
+    pub fn to_bytes(&self) -> [u8; 64] {
+        let gamma: AffinePoint = self.gamma.into();
+        let gamma = gamma.to_bytes();
+
+        let delta: AffinePoint = self.delta.into();
+        let delta = delta.to_bytes();
+
+        let mut bytes = [0u8; 64];
+
+        bytes[..32].copy_from_slice(&gamma);
+        bytes[32..].copy_from_slice(&delta);
+
+        bytes
+    }
+
+    /// Deserialize from a [`ElgamalCipher::to_bytes`] construction
+    pub fn from_bytes(bytes: [u8; 64]) -> Option<Self> {
+        let mut gamma = [0u8; 32];
+        let mut delta = [0u8; 32];
+
+        gamma.copy_from_slice(&bytes[..32]);
+        delta.copy_from_slice(&bytes[32..]);
+
+        let gamma = AffinePoint::from_bytes(gamma);
+        let gamma = if gamma.is_some().into() {
+            gamma.unwrap()
+        } else {
+            return None;
+        };
+
+        let delta = AffinePoint::from_bytes(delta);
+        let delta = if delta.is_some().into() {
+            delta.unwrap()
+        } else {
+            return None;
+        };
+
+        let cipher = ElgamalCipher::new(gamma.into(), delta.into());
+        Some(cipher)
     }
 }
 
@@ -305,5 +347,21 @@ mod tests {
         let decrypt = cipher.decrypt(&b);
 
         assert_eq!(result, decrypt);
+    }
+
+    #[test]
+    fn to_bytes() {
+        let (a, _, b, b_g) = gen();
+
+        let m = Fr::random(&mut rand::thread_rng());
+        let m = GENERATOR_EXTENDED * m;
+
+        let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);
+        let cipher = cipher.to_bytes();
+        let cipher = ElgamalCipher::from_bytes(cipher).unwrap();
+
+        let decrypt = cipher.decrypt(&b);
+
+        assert_eq!(m, decrypt);
     }
 }
