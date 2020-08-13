@@ -6,7 +6,6 @@ authors = [
     "CPerezz <carlos@dusk.network>"
 ]
 description = "Dusk's fork of the implementation of the Jubjub elliptic curve group"
-documentation = "https://github.com/dusk-network/jubjub"
 homepage = "https://github.com/dusk-network/jubjub"
 license = "MIT/Apache-2.0"
 name = "dusk-jubjub"
