@@ -1,3 +1,10 @@
+# 0.3.6
+### Add
+- Implements #25 Use standard docs.rs documentation engine.
+- Implements #31 Generators available as extended points.
+- Implements #32 ElGamal encryption scheme.
+- Implements #33 no_std as optional feature
+
 # 0.3.5
 ### Fix
 - Issue #25 JubJub random function causes stack overflow.
