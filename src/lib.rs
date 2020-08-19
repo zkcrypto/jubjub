@@ -662,6 +662,16 @@ impl ExtendedPoint {
         }
     }
 
+    /// Returns two scalars suitable for hashing that represent the
+    /// Extended Point.
+    pub fn to_hash_inputs(&self) -> [Fq; 2] {
+        // The same AffinePoint can have different ExtendedPoint
+        // representations, therefore we convert from Extended to Affine
+        // before hashing, to ensure deterministic result
+        let p = AffinePoint::from(self);
+        [p.x, p.y]
+    }
+
     /// Computes the doubling of a point more efficiently than a point can
     /// be added to itself.
     pub fn double(&self) -> ExtendedPoint {
