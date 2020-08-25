@@ -32,7 +32,17 @@
 #[macro_use]
 extern crate std;
 
+use core::borrow::Borrow;
+use core::fmt;
+use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use ff::Field;
+use group::{
+    cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
+    prime::PrimeGroup,
+    Curve, Group, GroupEncoding, WnafGroup,
+};
+use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[macro_use]
@@ -52,10 +62,16 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 
 /// This represents a Jubjub point in the affine `(u, v)`
 /// coordinates.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub struct AffinePoint {
     u: Fq,
     v: Fq,
+}
+
+impl fmt::Display for AffinePoint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl Neg for AffinePoint {
@@ -80,7 +96,7 @@ impl ConstantTimeEq for AffinePoint {
 
 impl PartialEq for AffinePoint {
     fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other).unwrap_u8() == 1
+        bool::from(self.ct_eq(other))
     }
 }
 
@@ -104,13 +120,19 @@ impl ConditionallySelectable for AffinePoint {
 /// * Add it to an `ExtendedPoint`, `AffineNielsPoint` or `ExtendedNielsPoint`.
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub struct ExtendedPoint {
     u: Fq,
     v: Fq,
     z: Fq,
     t1: Fq,
     t2: Fq,
+}
+
+impl fmt::Display for ExtendedPoint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl ConstantTimeEq for ExtendedPoint {
@@ -120,8 +142,8 @@ impl ConstantTimeEq for ExtendedPoint {
         //      (vz'z = v'z'z)
         // as z and z' are always nonzero.
 
-        (&self.u * &other.z).ct_eq(&(&other.u * &self.z))
-            & (&self.v * &other.z).ct_eq(&(&other.v * &self.z))
+        (self.u * other.z).ct_eq(&(other.u * self.z))
+            & (self.v * other.z).ct_eq(&(other.v * self.z))
     }
 }
 
@@ -139,7 +161,19 @@ impl ConditionallySelectable for ExtendedPoint {
 
 impl PartialEq for ExtendedPoint {
     fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other).unwrap_u8() == 1
+        bool::from(self.ct_eq(other))
+    }
+}
+
+impl<T> Sum<T> for ExtendedPoint
+where
+    T: Borrow<ExtendedPoint>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::identity(), |acc, item| acc + item.borrow())
     }
 }
 
@@ -187,8 +221,8 @@ impl<'a> From<&'a ExtendedPoint> for AffinePoint {
         let zinv = extended.z.invert().unwrap();
 
         AffinePoint {
-            u: extended.u * &zinv,
-            v: extended.v * &zinv,
+            u: extended.u * zinv,
+            v: extended.v * zinv,
         }
     }
 }
@@ -347,18 +381,18 @@ impl_binops_multiplicative_mixed!(ExtendedNielsPoint, Fr, ExtendedPoint);
 
 // `d = -(10240/10241)`
 const EDWARDS_D: Fq = Fq::from_raw([
-    0x01065fd6d6343eb1,
-    0x292d7f6d37579d26,
-    0xf5fd9207e6bd7fd4,
-    0x2a9318e74bfa2b48,
+    0x0106_5fd6_d634_3eb1,
+    0x292d_7f6d_3757_9d26,
+    0xf5fd_9207_e6bd_7fd4,
+    0x2a93_18e7_4bfa_2b48,
 ]);
 
 // `2*d`
 const EDWARDS_D2: Fq = Fq::from_raw([
-    0x020cbfadac687d62,
-    0x525afeda6eaf3a4c,
-    0xebfb240fcd7affa8,
-    0x552631ce97f45691,
+    0x020c_bfad_ac68_7d62,
+    0x525a_feda_6eaf_3a4c,
+    0xebfb_240f_cd7a_ffa8,
+    0x5526_31ce_97f4_5691,
 ]);
 
 impl AffinePoint {
@@ -368,6 +402,11 @@ impl AffinePoint {
             u: Fq::zero(),
             v: Fq::one(),
         }
+    }
+
+    /// Determines if this point is the identity.
+    pub fn is_identity(&self) -> Choice {
+        ExtendedPoint::from(*self).is_identity()
     }
 
     /// Multiplies this point by the cofactor, producing an
@@ -433,7 +472,7 @@ impl AffinePoint {
 
             let v2 = v.square();
 
-            ((v2 - Fq::one()) * ((Fq::one() + EDWARDS_D * &v2).invert().unwrap_or(Fq::zero())))
+            ((v2 - Fq::one()) * ((Fq::one() + EDWARDS_D * v2).invert().unwrap_or(Fq::zero())))
                 .sqrt()
                 .and_then(|u| {
                     // Fix the sign of `u` if necessary
@@ -454,6 +493,17 @@ impl AffinePoint {
     /// Returns the `v`-coordinate of this point.
     pub fn get_v(&self) -> Fq {
         self.v
+    }
+
+    /// Returns an `ExtendedPoint` for use in arithmetic operations.
+    pub const fn to_extended(&self) -> ExtendedPoint {
+        ExtendedPoint {
+            u: self.u,
+            v: self.v,
+            z: Fq::one(),
+            t1: self.u,
+            t2: self.v,
+        }
     }
 
     /// Performs a pre-processing step that produces an `AffineNielsPoint`
@@ -480,7 +530,7 @@ impl AffinePoint {
         let u2 = self.u.square();
         let v2 = self.v.square();
 
-        &v2 - &u2 == Fq::one() + &EDWARDS_D * &u2 * &v2
+        v2 - u2 == Fq::one() + EDWARDS_D * u2 * v2
     }
 }
 
@@ -536,10 +586,10 @@ impl ExtendedPoint {
     /// for use in multiple additions.
     pub fn to_niels(&self) -> ExtendedNielsPoint {
         ExtendedNielsPoint {
-            v_plus_u: &self.v + &self.u,
-            v_minus_u: &self.v - &self.u,
+            v_plus_u: self.v + self.u,
+            v_minus_u: self.v - self.u,
             z: self.z,
-            t2d: &self.t1 * &self.t2 * EDWARDS_D2,
+            t2d: self.t1 * self.t2 * EDWARDS_D2,
         }
     }
 
@@ -621,17 +671,17 @@ impl ExtendedPoint {
         let uu = self.u.square();
         let vv = self.v.square();
         let zz2 = self.z.square().double();
-        let uv2 = (&self.u + &self.v).square();
-        let vv_plus_uu = &vv + &uu;
-        let vv_minus_uu = &vv - &uu;
+        let uv2 = (self.u + self.v).square();
+        let vv_plus_uu = vv + uu;
+        let vv_minus_uu = vv - uu;
 
         // The remaining arithmetic is exactly the process of converting
         // from a completed point to an extended point.
         CompletedPoint {
-            u: &uv2 - &vv_plus_uu,
+            u: uv2 - vv_plus_uu,
             v: vv_plus_uu,
             z: vv_minus_uu,
-            t: &zz2 - &vv_minus_uu,
+            t: zz2 - vv_minus_uu,
         }
         .into_extended()
     }
@@ -639,6 +689,38 @@ impl ExtendedPoint {
     #[inline]
     fn multiply(self, by: &[u8; 32]) -> Self {
         self.to_niels().multiply(by)
+    }
+
+    /// Converts a batch of projective elements into affine elements.
+    ///
+    /// This function will panic if `p.len() != q.len()`.
+    ///
+    /// This costs 5 multiplications per element, and a field inversion.
+    fn batch_normalize(p: &[Self], q: &mut [AffinePoint]) {
+        assert_eq!(p.len(), q.len());
+
+        let mut acc = Fq::one();
+        for (p, q) in p.iter().zip(q.iter_mut()) {
+            // We use the `u` field of `AffinePoint` to store the product
+            // of previous z-coordinates seen.
+            q.u = acc;
+            acc *= &p.z;
+        }
+
+        // This is the inverse, as all z-coordinates are nonzero.
+        acc = acc.invert().unwrap();
+
+        for (p, q) in p.iter().zip(q.iter_mut()).rev() {
+            // Compute tmp = 1/z
+            let tmp = q.u * acc;
+
+            // Cancel out z-coordinate in denominator of `acc`
+            acc *= &p.z;
+
+            // Set the coordinates to the correct value
+            q.u = p.u * &tmp; // Multiply by 1/z
+            q.v = p.v * &tmp; // Multiply by 1/z
+        }
     }
 
     /// This is only for debugging purposes and not
@@ -686,18 +768,18 @@ impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
         // Z3 = F * G
         // T3 = E * H
 
-        let a = (&self.v - &self.u) * &other.v_minus_u;
-        let b = (&self.v + &self.u) * &other.v_plus_u;
-        let c = &self.t1 * &self.t2 * &other.t2d;
-        let d = (&self.z * &other.z).double();
+        let a = (self.v - self.u) * other.v_minus_u;
+        let b = (self.v + self.u) * other.v_plus_u;
+        let c = self.t1 * self.t2 * other.t2d;
+        let d = (self.z * other.z).double();
 
         // The remaining arithmetic is exactly the process of converting
         // from a completed point to an extended point.
         CompletedPoint {
-            u: &b - &a,
-            v: &b + &a,
-            z: &d + &c,
-            t: &d - &c,
+            u: b - a,
+            v: b + a,
+            z: d + c,
+            t: d - c,
         }
         .into_extended()
     }
@@ -708,16 +790,16 @@ impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
 
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, other: &'b ExtendedNielsPoint) -> ExtendedPoint {
-        let a = (&self.v - &self.u) * &other.v_plus_u;
-        let b = (&self.v + &self.u) * &other.v_minus_u;
-        let c = &self.t1 * &self.t2 * &other.t2d;
-        let d = (&self.z * &other.z).double();
+        let a = (self.v - self.u) * other.v_plus_u;
+        let b = (self.v + self.u) * other.v_minus_u;
+        let c = self.t1 * self.t2 * other.t2d;
+        let d = (self.z * other.z).double();
 
         CompletedPoint {
-            u: &b - &a,
-            v: &b + &a,
-            z: &d - &c,
-            t: &d + &c,
+            u: b - a,
+            v: b + a,
+            z: d - c,
+            t: d + c,
         }
         .into_extended()
     }
@@ -734,18 +816,18 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
         // except we can assume that `other.z` is one, so that we perform
         // 7 multiplications.
 
-        let a = (&self.v - &self.u) * &other.v_minus_u;
-        let b = (&self.v + &self.u) * &other.v_plus_u;
-        let c = &self.t1 * &self.t2 * &other.t2d;
+        let a = (self.v - self.u) * other.v_minus_u;
+        let b = (self.v + self.u) * other.v_plus_u;
+        let c = self.t1 * self.t2 * other.t2d;
         let d = self.z.double();
 
         // The remaining arithmetic is exactly the process of converting
         // from a completed point to an extended point.
         CompletedPoint {
-            u: &b - &a,
-            v: &b + &a,
-            z: &d + &c,
-            t: &d - &c,
+            u: b - a,
+            v: b + a,
+            z: d + c,
+            t: d - c,
         }
         .into_extended()
     }
@@ -756,16 +838,16 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
 
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, other: &'b AffineNielsPoint) -> ExtendedPoint {
-        let a = (&self.v - &self.u) * &other.v_plus_u;
-        let b = (&self.v + &self.u) * &other.v_minus_u;
-        let c = &self.t1 * &self.t2 * &other.t2d;
+        let a = (self.v - self.u) * other.v_plus_u;
+        let b = (self.v + self.u) * other.v_minus_u;
+        let c = self.t1 * self.t2 * other.t2d;
         let d = self.z.double();
 
         CompletedPoint {
-            u: &b - &a,
-            v: &b + &a,
-            z: &d - &c,
-            t: &d + &c,
+            u: b - a,
+            v: b + a,
+            z: d - c,
+            t: d + c,
         }
         .into_extended()
     }
@@ -835,9 +917,9 @@ impl CompletedPoint {
     #[inline]
     fn into_extended(self) -> ExtendedPoint {
         ExtendedPoint {
-            u: &self.u * &self.t,
-            v: &self.v * &self.z,
-            z: &self.z * &self.t,
+            u: self.u * self.t,
+            v: self.v * self.z,
+            z: self.z * self.t,
             t1: self.u,
             t2: self.v,
         }
@@ -903,6 +985,348 @@ pub fn batch_normalize<'a>(v: &'a mut [ExtendedPoint]) -> impl Iterator<Item = A
     v.iter().map(|p| AffinePoint { u: p.u, v: p.v })
 }
 
+impl<'a, 'b> Mul<&'b Fr> for &'a AffinePoint {
+    type Output = ExtendedPoint;
+
+    fn mul(self, other: &'b Fr) -> ExtendedPoint {
+        self.to_niels().multiply(&other.to_bytes())
+    }
+}
+
+impl_binops_multiplicative_mixed!(AffinePoint, Fr, ExtendedPoint);
+
+/// This represents a point in the prime-order subgroup of Jubjub, in extended
+/// coordinates.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SubgroupPoint(ExtendedPoint);
+
+impl From<SubgroupPoint> for ExtendedPoint {
+    fn from(val: SubgroupPoint) -> ExtendedPoint {
+        val.0
+    }
+}
+
+impl<'a> From<&'a SubgroupPoint> for &'a ExtendedPoint {
+    fn from(val: &'a SubgroupPoint) -> &'a ExtendedPoint {
+        &val.0
+    }
+}
+
+impl fmt::Display for SubgroupPoint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl ConditionallySelectable for SubgroupPoint {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        SubgroupPoint(ExtendedPoint::conditional_select(&a.0, &b.0, choice))
+    }
+}
+
+impl SubgroupPoint {
+    /// Constructs an AffinePoint given `u` and `v` without checking that the point is on
+    /// the curve or in the prime-order subgroup.
+    ///
+    /// This should only be used for hard-coding constants (e.g. fixed generators); in all
+    /// other cases, use [`SubgroupPoint::from_bytes`] instead.
+    ///
+    /// [`SubgroupPoint::from_bytes`]: SubgroupPoint#impl-GroupEncoding
+    pub const fn from_raw_unchecked(u: Fq, v: Fq) -> Self {
+        SubgroupPoint(AffinePoint::from_raw_unchecked(u, v).to_extended())
+    }
+}
+
+impl<T> Sum<T> for SubgroupPoint
+where
+    T: Borrow<SubgroupPoint>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::identity(), |acc, item| acc + item.borrow())
+    }
+}
+
+impl Neg for SubgroupPoint {
+    type Output = SubgroupPoint;
+
+    #[inline]
+    fn neg(self) -> SubgroupPoint {
+        SubgroupPoint(-self.0)
+    }
+}
+
+impl Neg for &SubgroupPoint {
+    type Output = SubgroupPoint;
+
+    #[inline]
+    fn neg(self) -> SubgroupPoint {
+        SubgroupPoint(-self.0)
+    }
+}
+
+impl<'a, 'b> Add<&'b SubgroupPoint> for &'a ExtendedPoint {
+    type Output = ExtendedPoint;
+
+    #[inline]
+    fn add(self, other: &'b SubgroupPoint) -> ExtendedPoint {
+        self + &other.0
+    }
+}
+
+impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a ExtendedPoint {
+    type Output = ExtendedPoint;
+
+    #[inline]
+    fn sub(self, other: &'b SubgroupPoint) -> ExtendedPoint {
+        self - &other.0
+    }
+}
+
+impl_binops_additive!(ExtendedPoint, SubgroupPoint);
+
+impl<'a, 'b> Add<&'b SubgroupPoint> for &'a SubgroupPoint {
+    type Output = SubgroupPoint;
+
+    #[inline]
+    fn add(self, other: &'b SubgroupPoint) -> SubgroupPoint {
+        SubgroupPoint(self.0 + &other.0)
+    }
+}
+
+impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a SubgroupPoint {
+    type Output = SubgroupPoint;
+
+    #[inline]
+    fn sub(self, other: &'b SubgroupPoint) -> SubgroupPoint {
+        SubgroupPoint(self.0 - &other.0)
+    }
+}
+
+impl_binops_additive!(SubgroupPoint, SubgroupPoint);
+
+impl<'a, 'b> Mul<&'b Fr> for &'a SubgroupPoint {
+    type Output = SubgroupPoint;
+
+    fn mul(self, other: &'b Fr) -> SubgroupPoint {
+        SubgroupPoint(self.0.multiply(&other.to_bytes()))
+    }
+}
+
+impl_binops_multiplicative!(SubgroupPoint, Fr);
+
+impl Group for ExtendedPoint {
+    type Scalar = Fr;
+
+    fn random<R: RngCore + ?Sized>(rng: &mut R) -> Self {
+        loop {
+            let v = Fq::random(rng);
+            let flip_sign = rng.next_u32() % 2 != 0;
+
+            // See AffinePoint::from_bytes for details.
+            let v2 = v.square();
+            let p = ((v2 - Fq::one())
+                * ((Fq::one() + EDWARDS_D * v2).invert().unwrap_or(Fq::zero())))
+            .sqrt()
+            .map(|u| AffinePoint {
+                u: if flip_sign { -u } else { u },
+                v,
+            });
+
+            if p.is_some().into() {
+                let p = p.unwrap().to_curve();
+
+                if bool::from(!p.is_identity()) {
+                    return p;
+                }
+            }
+        }
+    }
+
+    fn identity() -> Self {
+        Self::identity()
+    }
+
+    fn generator() -> Self {
+        AffinePoint::generator().into()
+    }
+
+    fn is_identity(&self) -> Choice {
+        self.is_identity()
+    }
+
+    #[must_use]
+    fn double(&self) -> Self {
+        self.double()
+    }
+}
+
+impl Group for SubgroupPoint {
+    type Scalar = Fr;
+
+    fn random<R: RngCore + ?Sized>(rng: &mut R) -> Self {
+        loop {
+            let p = ExtendedPoint::random(rng).clear_cofactor();
+
+            if bool::from(!p.is_identity()) {
+                return p;
+            }
+        }
+    }
+
+    fn identity() -> Self {
+        SubgroupPoint(ExtendedPoint::identity())
+    }
+
+    fn generator() -> Self {
+        ExtendedPoint::generator().clear_cofactor()
+    }
+
+    fn is_identity(&self) -> Choice {
+        self.0.is_identity()
+    }
+
+    #[must_use]
+    fn double(&self) -> Self {
+        SubgroupPoint(self.0.double())
+    }
+}
+
+impl WnafGroup for ExtendedPoint {
+    fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
+        // Copied from bls12_381::g1, should be updated.
+        const RECOMMENDATIONS: [usize; 12] =
+            [1, 3, 7, 20, 43, 120, 273, 563, 1630, 3128, 7933, 62569];
+
+        let mut ret = 4;
+        for r in &RECOMMENDATIONS {
+            if num_scalars > *r {
+                ret += 1;
+            } else {
+                break;
+            }
+        }
+
+        ret
+    }
+}
+
+impl PrimeGroup for SubgroupPoint {}
+
+impl CofactorGroup for ExtendedPoint {
+    type Subgroup = SubgroupPoint;
+
+    fn clear_cofactor(&self) -> Self::Subgroup {
+        SubgroupPoint(self.mul_by_cofactor())
+    }
+
+    fn into_subgroup(self) -> CtOption<Self::Subgroup> {
+        CtOption::new(SubgroupPoint(self), self.is_torsion_free())
+    }
+}
+
+impl Curve for ExtendedPoint {
+    type AffineRepr = AffinePoint;
+
+    fn batch_normalize(p: &[Self], q: &mut [Self::AffineRepr]) {
+        Self::batch_normalize(p, q);
+    }
+
+    fn to_affine(&self) -> Self::AffineRepr {
+        self.into()
+    }
+}
+
+impl CofactorCurve for ExtendedPoint {
+    type Affine = AffinePoint;
+}
+
+impl CofactorCurveAffine for AffinePoint {
+    type Scalar = Fr;
+    type Curve = ExtendedPoint;
+
+    fn identity() -> Self {
+        Self::identity()
+    }
+
+    fn generator() -> Self {
+        // The point with the lowest positive v-coordinate and positive u-coordinate.
+        AffinePoint {
+            u: Fq::from_raw([
+                0xe4b3_d35d_f1a7_adfe,
+                0xcaf5_5d1b_29bf_81af,
+                0x8b0f_03dd_d60a_8187,
+                0x62ed_cbb8_bf37_87c8,
+            ]),
+            v: Fq::from_raw([
+                0x0000_0000_0000_000b,
+                0x0000_0000_0000_0000,
+                0x0000_0000_0000_0000,
+                0x0000_0000_0000_0000,
+            ]),
+        }
+    }
+
+    fn is_identity(&self) -> Choice {
+        self.is_identity()
+    }
+
+    fn to_curve(&self) -> Self::Curve {
+        (*self).into()
+    }
+}
+
+impl GroupEncoding for ExtendedPoint {
+    type Repr = [u8; 32];
+
+    fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+        AffinePoint::from_bytes(*bytes).map(Self::from)
+    }
+
+    fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+        // We can't avoid curve checks when parsing a compressed encoding.
+        AffinePoint::from_bytes(*bytes).map(Self::from)
+    }
+
+    fn to_bytes(&self) -> Self::Repr {
+        AffinePoint::from(self).to_bytes()
+    }
+}
+
+impl GroupEncoding for SubgroupPoint {
+    type Repr = [u8; 32];
+
+    fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+        ExtendedPoint::from_bytes(bytes).and_then(|p| p.into_subgroup())
+    }
+
+    fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+        ExtendedPoint::from_bytes_unchecked(bytes).map(SubgroupPoint)
+    }
+
+    fn to_bytes(&self) -> Self::Repr {
+        self.0.to_bytes()
+    }
+}
+
+impl GroupEncoding for AffinePoint {
+    type Repr = [u8; 32];
+
+    fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+        Self::from_bytes(*bytes)
+    }
+
+    fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+        Self::from_bytes(*bytes)
+    }
+
+    fn to_bytes(&self) -> Self::Repr {
+        self.to_bytes()
+    }
+}
+
 #[test]
 fn test_is_on_curve_var() {
     assert!(AffinePoint::identity().is_on_curve_vartime());
@@ -910,9 +1334,9 @@ fn test_is_on_curve_var() {
 
 #[test]
 fn test_d_is_non_quadratic_residue() {
-    assert!(EDWARDS_D.sqrt().is_none().unwrap_u8() == 1);
-    assert!((-EDWARDS_D).sqrt().is_none().unwrap_u8() == 1);
-    assert!((-EDWARDS_D).invert().unwrap().sqrt().is_none().unwrap_u8() == 1);
+    assert!(bool::from(EDWARDS_D.sqrt().is_none()));
+    assert!(bool::from((-EDWARDS_D).sqrt().is_none()));
+    assert!(bool::from((-EDWARDS_D).invert().unwrap().sqrt().is_none()));
 }
 
 #[test]
@@ -955,16 +1379,16 @@ fn test_extended_niels_point_identity() {
 fn test_assoc() {
     let p = ExtendedPoint::from(AffinePoint {
         u: Fq::from_raw([
-            0x81c571e5d883cfb0,
-            0x049f7a686f147029,
-            0xf539c860bc3ea21f,
-            0x4284715b7ccc8162,
+            0x81c5_71e5_d883_cfb0,
+            0x049f_7a68_6f14_7029,
+            0xf539_c860_bc3e_a21f,
+            0x4284_715b_7ccc_8162,
         ]),
         v: Fq::from_raw([
-            0xbf096275684bb8ca,
-            0xc7ba245890af256d,
-            0x59119f3e86380eb0,
-            0x3793de182f9fb1d2,
+            0xbf09_6275_684b_b8ca,
+            0xc7ba_2458_90af_256d,
+            0x5911_9f3e_8638_0eb0,
+            0x3793_de18_2f9f_b1d2,
         ]),
     })
     .mul_by_cofactor();
@@ -980,16 +1404,16 @@ fn test_assoc() {
 fn test_batch_normalize() {
     let mut p = ExtendedPoint::from(AffinePoint {
         u: Fq::from_raw([
-            0x81c571e5d883cfb0,
-            0x049f7a686f147029,
-            0xf539c860bc3ea21f,
-            0x4284715b7ccc8162,
+            0x81c5_71e5_d883_cfb0,
+            0x049f_7a68_6f14_7029,
+            0xf539_c860_bc3e_a21f,
+            0x4284_715b_7ccc_8162,
         ]),
         v: Fq::from_raw([
-            0xbf096275684bb8ca,
-            0xc7ba245890af256d,
-            0x59119f3e86380eb0,
-            0x3793de182f9fb1d2,
+            0xbf09_6275_684b_b8ca,
+            0xc7ba_2458_90af_256d,
+            0x5911_9f3e_8638_0eb0,
+            0x3793_de18_2f9f_b1d2,
         ]),
     })
     .mul_by_cofactor();
@@ -1022,10 +1446,10 @@ fn test_batch_normalize() {
 #[cfg(test)]
 const FULL_GENERATOR: AffinePoint = AffinePoint::from_raw_unchecked(
     Fq::from_raw([
-        0xe4b3d35df1a7adfe,
-        0xcaf55d1b29bf81af,
-        0x8b0f03ddd60a8187,
-        0x62edcbb8bf3787c8,
+        0xe4b3_d35d_f1a7_adfe,
+        0xcaf5_5d1b_29bf_81af,
+        0x8b0f_03dd_d60a_8187,
+        0x62ed_cbb8_bf37_87c8,
     ]),
     Fq::from_raw([0xb, 0x0, 0x0, 0x0]),
 );
@@ -1034,80 +1458,85 @@ const FULL_GENERATOR: AffinePoint = AffinePoint::from_raw_unchecked(
 const EIGHT_TORSION: [AffinePoint; 8] = [
     AffinePoint::from_raw_unchecked(
         Fq::from_raw([
-            0xd92e6a7927200d43,
-            0x7aa41ac43dae8582,
-            0xeaaae086a16618d1,
-            0x71d4df38ba9e7973,
+            0xd92e_6a79_2720_0d43,
+            0x7aa4_1ac4_3dae_8582,
+            0xeaaa_e086_a166_18d1,
+            0x71d4_df38_ba9e_7973,
         ]),
         Fq::from_raw([
-            0xff0d2068eff496dd,
-            0x9106ee90f384a4a1,
-            0x16a13035ad4d7266,
-            0x4958bdb21966982e,
+            0xff0d_2068_eff4_96dd,
+            0x9106_ee90_f384_a4a1,
+            0x16a1_3035_ad4d_7266,
+            0x4958_bdb2_1966_982e,
         ]),
     ),
     AffinePoint::from_raw_unchecked(
         Fq::from_raw([
-            0xfffeffff00000001,
-            0x67baa40089fb5bfe,
-            0xa5e80b39939ed334,
-            0x73eda753299d7d47,
+            0xfffe_ffff_0000_0001,
+            0x67ba_a400_89fb_5bfe,
+            0xa5e8_0b39_939e_d334,
+            0x73ed_a753_299d_7d47,
         ]),
         Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
     ),
     AffinePoint::from_raw_unchecked(
         Fq::from_raw([
-            0xd92e6a7927200d43,
-            0x7aa41ac43dae8582,
-            0xeaaae086a16618d1,
-            0x71d4df38ba9e7973,
+            0xd92e_6a79_2720_0d43,
+            0x7aa4_1ac4_3dae_8582,
+            0xeaaa_e086_a166_18d1,
+            0x71d4_df38_ba9e_7973,
         ]),
         Fq::from_raw([
-            0xf2df96100b6924,
-            0xc2b6b5720c79b75d,
-            0x1c98a7d25c54659e,
-            0x2a94e9a11036e51a,
+            0x00f2_df96_100b_6924,
+            0xc2b6_b572_0c79_b75d,
+            0x1c98_a7d2_5c54_659e,
+            0x2a94_e9a1_1036_e51a,
         ]),
     ),
     AffinePoint::from_raw_unchecked(
         Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
         Fq::from_raw([
-            0xffffffff00000000,
-            0x53bda402fffe5bfe,
-            0x3339d80809a1d805,
-            0x73eda753299d7d48,
+            0xffff_ffff_0000_0000,
+            0x53bd_a402_fffe_5bfe,
+            0x3339_d808_09a1_d805,
+            0x73ed_a753_299d_7d48,
         ]),
     ),
     AffinePoint::from_raw_unchecked(
         Fq::from_raw([
-            0x26d19585d8dff2be,
-            0xd919893ec24fd67c,
-            0x488ef781683bbf33,
-            0x218c81a6eff03d4,
+            0x26d1_9585_d8df_f2be,
+            0xd919_893e_c24f_d67c,
+            0x488e_f781_683b_bf33,
+            0x0218_c81a_6eff_03d4,
         ]),
         Fq::from_raw([
-            0xf2df96100b6924,
-            0xc2b6b5720c79b75d,
-            0x1c98a7d25c54659e,
-            0x2a94e9a11036e51a,
+            0x00f2_df96_100b_6924,
+            0xc2b6_b572_0c79_b75d,
+            0x1c98_a7d2_5c54_659e,
+            0x2a94_e9a1_1036_e51a,
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([0x1000000000000, 0xec03000276030000, 0x8d51ccce760304d0, 0x0]),
+        Fq::from_raw([
+            0x0001_0000_0000_0000,
+            0xec03_0002_7603_0000,
+            0x8d51_ccce_7603_04d0,
+            0x0,
+        ]),
         Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
     ),
     AffinePoint::from_raw_unchecked(
         Fq::from_raw([
-            0x26d19585d8dff2be,
-            0xd919893ec24fd67c,
-            0x488ef781683bbf33,
-            0x218c81a6eff03d4,
+            0x26d1_9585_d8df_f2be,
+            0xd919_893e_c24f_d67c,
+            0x488e_f781_683b_bf33,
+            0x0218_c81a_6eff_03d4,
         ]),
         Fq::from_raw([
-            0xff0d2068eff496dd,
-            0x9106ee90f384a4a1,
-            0x16a13035ad4d7266,
-            0x4958bdb21966982e,
+            0xff0d_2068_eff4_96dd,
+            0x9106_ee90_f384_a4a1,
+            0x16a1_3035_ad4d_7266,
+            0x4958_bdb2_1966_982e,
         ]),
     ),
     AffinePoint::from_raw_unchecked(
@@ -1119,9 +1548,9 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
 #[test]
 fn find_eight_torsion() {
     let g = ExtendedPoint::from(FULL_GENERATOR);
-    assert!(g.is_small_order().unwrap_u8() == 0);
+    assert!(!bool::from(g.is_small_order()));
     let g = g.multiply(&FR_MODULUS_BYTES);
-    assert!(g.is_small_order().unwrap_u8() == 1);
+    assert!(bool::from(g.is_small_order()));
 
     let mut cur = g;
 
@@ -1140,22 +1569,23 @@ fn find_curve_generator() {
     let mut trial_bytes = [0; 32];
     for _ in 0..255 {
         let a = AffinePoint::from_bytes(trial_bytes);
-        if a.is_some().unwrap_u8() == 1 {
+        if bool::from(a.is_some()) {
             let a = a.unwrap();
             assert!(a.is_on_curve_vartime());
             let b = ExtendedPoint::from(a);
             let b = b.multiply(&FR_MODULUS_BYTES);
-            assert!(b.is_small_order().unwrap_u8() == 1);
+            assert!(bool::from(b.is_small_order()));
             let b = b.double();
-            assert!(b.is_small_order().unwrap_u8() == 1);
+            assert!(bool::from(b.is_small_order()));
             let b = b.double();
-            assert!(b.is_small_order().unwrap_u8() == 1);
-            if b.is_identity().unwrap_u8() == 0 {
+            assert!(bool::from(b.is_small_order()));
+            if !bool::from(b.is_identity()) {
                 let b = b.double();
-                assert!(b.is_small_order().unwrap_u8() == 1);
-                assert!(b.is_identity().unwrap_u8() == 1);
+                assert!(bool::from(b.is_small_order()));
+                assert!(bool::from(b.is_identity()));
                 assert_eq!(FULL_GENERATOR, a);
-                assert!(a.mul_by_cofactor().is_torsion_free().unwrap_u8() == 1);
+                assert_eq!(AffinePoint::generator(), a);
+                assert!(bool::from(a.mul_by_cofactor().is_torsion_free()));
                 return;
             }
         }
@@ -1169,7 +1599,7 @@ fn find_curve_generator() {
 #[test]
 fn test_small_order() {
     for point in EIGHT_TORSION.iter() {
-        assert!(point.is_small_order().unwrap_u8() == 1);
+        assert!(bool::from(point.is_small_order()));
     }
 }
 
@@ -1184,47 +1614,47 @@ fn test_is_identity() {
     assert!(a.v != b.v);
     assert!(a.z != b.z);
 
-    assert!(a.is_identity().unwrap_u8() == 1);
-    assert!(b.is_identity().unwrap_u8() == 1);
+    assert!(bool::from(a.is_identity()));
+    assert!(bool::from(b.is_identity()));
 
     for point in EIGHT_TORSION.iter() {
-        assert!(point.mul_by_cofactor().is_identity().unwrap_u8() == 1);
+        assert!(bool::from(point.mul_by_cofactor().is_identity()));
     }
 }
 
 #[test]
 fn test_mul_consistency() {
     let a = Fr([
-        0x21e61211d9934f2e,
-        0xa52c058a693c3e07,
-        0x9ccb77bfb12d6360,
-        0x07df2470ec94398e,
+        0x21e6_1211_d993_4f2e,
+        0xa52c_058a_693c_3e07,
+        0x9ccb_77bf_b12d_6360,
+        0x07df_2470_ec94_398e,
     ]);
     let b = Fr([
-        0x03336d1cbe19dbe0,
-        0x0153618f6156a536,
-        0x2604c9e1fc3c6b15,
-        0x04ae581ceb028720,
+        0x0333_6d1c_be19_dbe0,
+        0x0153_618f_6156_a536,
+        0x2604_c9e1_fc3c_6b15,
+        0x04ae_581c_eb02_8720,
     ]);
     let c = Fr([
-        0xd7abf5bb24683f4c,
-        0x9d7712cc274b7c03,
-        0x973293db9683789f,
-        0x0b677e29380a97a7,
+        0xd7ab_f5bb_2468_3f4c,
+        0x9d77_12cc_274b_7c03,
+        0x9732_93db_9683_789f,
+        0x0b67_7e29_380a_97a7,
     ]);
     assert_eq!(a * b, c);
     let p = ExtendedPoint::from(AffinePoint {
         u: Fq::from_raw([
-            0x81c571e5d883cfb0,
-            0x049f7a686f147029,
-            0xf539c860bc3ea21f,
-            0x4284715b7ccc8162,
+            0x81c5_71e5_d883_cfb0,
+            0x049f_7a68_6f14_7029,
+            0xf539_c860_bc3e_a21f,
+            0x4284_715b_7ccc_8162,
         ]),
         v: Fq::from_raw([
-            0xbf096275684bb8ca,
-            0xc7ba245890af256d,
-            0x59119f3e86380eb0,
-            0x3793de182f9fb1d2,
+            0xbf09_6275_684b_b8ca,
+            0xc7ba_2458_90af_256d,
+            0x5911_9f3e_8638_0eb0,
+            0x3793_de18_2f9f_b1d2,
         ]),
     })
     .mul_by_cofactor();
@@ -1321,6 +1751,6 @@ fn test_serialization_consistency() {
         let deserialized = AffinePoint::from_bytes(serialized).unwrap();
         assert_eq!(affine, deserialized);
         assert_eq!(expected_serialized, serialized);
-        p = p + &gen;
+        p += gen;
     }
 }
