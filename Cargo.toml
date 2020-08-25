@@ -14,7 +14,6 @@ version = "0.4.0"
 edition = "2018"
 
 [dependencies.bls12_381]
-path = "../bls12_381"
 version = "0.2"
 default-features = false
 
@@ -23,12 +22,10 @@ version = "1"
 default-features = false
 
 [dependencies.ff]
-path = "../ff"
 version = "0.7"
 default-features = false
 
 [dependencies.group]
-path = "../group"
 version = "0.7"
 default-features = false
 
