@@ -1,6 +1,7 @@
 //! This module provides an implementation of the Jubjub scalar field $\mathbb{F}_r$
 //! where `r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
 
+use bitvec::{array::BitArray, order::Lsb0};
 use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -77,11 +78,6 @@ pub const MODULUS: Fr = Fr([
     0x0667_3b01_0134_3b00,
     0x0e7d_b4ea_6533_afa9,
 ]);
-
-const MODULUS_BYTES: [u8; 32] = [
-    0xb7, 0x2c, 0xf7, 0xd6, 0x5e, 0x0e, 0x97, 0xd0, 0x82, 0x10, 0xc8, 0xcc, 0x93, 0x20, 0x68, 0xa6,
-    0x00, 0x3b, 0x34, 0x01, 0x01, 0x3b, 0x67, 0x06, 0xa9, 0xaf, 0x33, 0x65, 0xea, 0xb4, 0x7d, 0x0e,
-];
 
 // The number of bits needed to represent the modulus.
 const MODULUS_BITS: u32 = 252;
@@ -623,7 +619,7 @@ impl<'a> From<&'a Fr> for [u8; 32] {
 }
 
 impl Field for Fr {
-    fn random<R: RngCore + ?Sized>(rng: &mut R) -> Self {
+    fn random(mut rng: impl RngCore) -> Self {
         let mut buf = [0; 64];
         rng.fill_bytes(&mut buf);
         Self::from_bytes_wide(&buf)
@@ -662,7 +658,7 @@ impl Field for Fr {
 
 impl PrimeField for Fr {
     type Repr = [u8; 32];
-    type ReprEndianness = byteorder::LittleEndian;
+    type ReprBits = [u64; 4];
 
     fn from_repr(r: Self::Repr) -> Option<Self> {
         let res = Self::from_bytes(&r);
@@ -677,12 +673,23 @@ impl PrimeField for Fr {
         self.to_bytes()
     }
 
+    fn to_le_bits(&self) -> BitArray<Lsb0, Self::ReprBits> {
+        let bytes = self.to_bytes();
+        let limbs = [
+            u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
+            u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+            u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
+            u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
+        ];
+        BitArray::new(limbs)
+    }
+
     fn is_odd(&self) -> bool {
         self.to_bytes()[0] & 1 == 1
     }
 
-    fn char() -> Self::Repr {
-        MODULUS_BYTES
+    fn char_le_bits() -> BitArray<Lsb0, Self::ReprBits> {
+        BitArray::new(MODULUS.0)
     }
 
     const NUM_BITS: u32 = MODULUS_BITS;

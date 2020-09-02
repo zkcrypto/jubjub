@@ -40,10 +40,13 @@ use ff::Field;
 use group::{
     cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
     prime::PrimeGroup,
-    Curve, Group, GroupEncoding, WnafGroup,
+    Curve, Group, GroupEncoding,
 };
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
+
+#[cfg(feature = "alloc")]
+use group::WnafGroup;
 
 #[macro_use]
 mod util;
@@ -1120,9 +1123,9 @@ impl_binops_multiplicative!(SubgroupPoint, Fr);
 impl Group for ExtendedPoint {
     type Scalar = Fr;
 
-    fn random<R: RngCore + ?Sized>(rng: &mut R) -> Self {
+    fn random(mut rng: impl RngCore) -> Self {
         loop {
-            let v = Fq::random(rng);
+            let v = Fq::random(&mut rng);
             let flip_sign = rng.next_u32() % 2 != 0;
 
             // See AffinePoint::from_bytes for details.
@@ -1166,9 +1169,9 @@ impl Group for ExtendedPoint {
 impl Group for SubgroupPoint {
     type Scalar = Fr;
 
-    fn random<R: RngCore + ?Sized>(rng: &mut R) -> Self {
+    fn random(mut rng: impl RngCore) -> Self {
         loop {
-            let p = ExtendedPoint::random(rng).clear_cofactor();
+            let p = ExtendedPoint::random(&mut rng).clear_cofactor();
 
             if bool::from(!p.is_identity()) {
                 return p;
@@ -1194,6 +1197,7 @@ impl Group for SubgroupPoint {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl WnafGroup for ExtendedPoint {
     fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
         // Copied from bls12_381::g1, should be updated.
