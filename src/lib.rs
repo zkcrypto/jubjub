@@ -32,6 +32,7 @@
 #[macro_use]
 extern crate std;
 
+use bitvec::{order::Lsb0, view::AsBits};
 use core::borrow::Borrow;
 use core::fmt;
 use core::iter::Sum;
@@ -269,10 +270,11 @@ impl AffineNielsPoint {
         // We skip the leading four bits because they're always
         // unset for Fr.
         for bit in by
+            .as_bits::<Lsb0>()
             .iter()
             .rev()
-            .flat_map(|byte| (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8)))
             .skip(4)
+            .map(|bit| Choice::from(if *bit { 1 } else { 0 }))
         {
             acc = acc.double();
             acc += AffineNielsPoint::conditional_select(&zero, &self, bit);
