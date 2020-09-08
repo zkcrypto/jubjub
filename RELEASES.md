@@ -1,3 +1,9 @@
+# 0.5.0
+
+This upgrade bumps our dependencies `bls12_381`, `group` and `ff`, while making
+corresponding changes to the APIs. This release now only supports Rust compilers
+version 1.44.0 or later.
+
 # 0.4.0
 
 This release adds implementations of the `ff` and `group` traits. Additional trait
