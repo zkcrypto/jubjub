@@ -79,6 +79,19 @@ pub const MODULUS: Fr = Fr([
     0x0e7d_b4ea_6533_afa9,
 ]);
 
+/// The modulus as u32 limbs.
+#[cfg(not(target_pointer_width = "64"))]
+const MODULUS_LIMBS_32: [u32; 8] = [
+    0xd6f7_2cb7,
+    0xd097_0e5e,
+    0xccc8_1082,
+    0xa668_2093,
+    0x0134_3b00,
+    0x0667_3b01,
+    0x6533_afa9,
+    0x0e7d_b4ea,
+];
+
 // The number of bits needed to represent the modulus.
 const MODULUS_BITS: u32 = 252;
 
@@ -656,9 +669,15 @@ impl Field for Fr {
     }
 }
 
+#[cfg(not(target_pointer_width = "64"))]
+type ReprBits = [u32; 8];
+
+#[cfg(target_pointer_width = "64")]
+type ReprBits = [u64; 4];
+
 impl PrimeField for Fr {
     type Repr = [u8; 32];
-    type ReprBits = [u64; 4];
+    type ReprBits = ReprBits;
 
     fn from_repr(r: Self::Repr) -> Option<Self> {
         let res = Self::from_bytes(&r);
@@ -675,12 +694,27 @@ impl PrimeField for Fr {
 
     fn to_le_bits(&self) -> BitArray<Lsb0, Self::ReprBits> {
         let bytes = self.to_bytes();
+
+        #[cfg(not(target_pointer_width = "64"))]
+        let limbs = [
+            u32::from_le_bytes(bytes[0..4].try_into().unwrap()),
+            u32::from_le_bytes(bytes[4..8].try_into().unwrap()),
+            u32::from_le_bytes(bytes[8..12].try_into().unwrap()),
+            u32::from_le_bytes(bytes[12..16].try_into().unwrap()),
+            u32::from_le_bytes(bytes[16..20].try_into().unwrap()),
+            u32::from_le_bytes(bytes[20..24].try_into().unwrap()),
+            u32::from_le_bytes(bytes[24..28].try_into().unwrap()),
+            u32::from_le_bytes(bytes[28..32].try_into().unwrap()),
+        ];
+
+        #[cfg(target_pointer_width = "64")]
         let limbs = [
             u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
             u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
             u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
             u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
         ];
+
         BitArray::new(limbs)
     }
 
@@ -689,6 +723,12 @@ impl PrimeField for Fr {
     }
 
     fn char_le_bits() -> BitArray<Lsb0, Self::ReprBits> {
+        #[cfg(not(target_pointer_width = "64"))]
+        {
+            BitArray::new(MODULUS_LIMBS_32)
+        }
+
+        #[cfg(target_pointer_width = "64")]
         BitArray::new(MODULUS.0)
     }
 
