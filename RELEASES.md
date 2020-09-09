@@ -1,3 +1,8 @@
+# 0.5.1
+
+# Fixed
+* The crate now compiles for non-64-bit targets, such as the `wasm32-*` targets.
+
 # 0.5.0
 
 This upgrade bumps our dependencies `bls12_381`, `group` and `ff`, while making
