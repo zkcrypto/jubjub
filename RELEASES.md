@@ -1,3 +1,7 @@
+# 0.3.8
+### Change
+- Use latest subtle & bls12_381 versions.
+
 # 0.3.6
 ### Add
 - Implements #25 Use standard docs.rs documentation engine.
