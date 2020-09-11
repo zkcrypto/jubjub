@@ -40,8 +40,9 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 /// Bob should do the following:
 ///
 /// 1. Obtain Alice’s authentic public key `A`.
-/// 2. Represent the message `M` as a point of JubJub defined such as `M = G · m` where `m` is a scalar in `Fr`.
-/// 3. Compute `γ = G · b` and `δ = M + (A · b)`.
+/// 2. Represent the message `M` as a point of JubJub defined such as `M = G ·m`
+/// where `m` is a scalar in `Fr`.
+/// 3. Compute `γ = G · b` and `δ = M + (A ·b)`.
 /// 4. Send the ciphertext `c = (γ; δ)` to Alice.
 ///
 /// #### Decryption
@@ -52,15 +53,16 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 /// #### Homomorphism
 /// A function `f` is homomorphic when `f(a · b) = f(a) · f(b)`.
 ///
-/// This implementation extends the homomorphic property of ElGamal to addition, subtraction and
-/// multiplication.
+/// This implementation extends the homomorphic property of ElGamal to addition,
+/// subtraction and multiplication.
 ///
-/// The addition and subtraction are homomorphic with other [`ElgamalCipher`] structures.
+/// The addition and subtraction are homomorphic with other [`ElgamalCipher`]
+/// structures.
 ///
 /// The multiplication is homomorphic with [`Fr`] scalars.
 ///
-/// Being `E` the encrypt and `D` the decrypt functions, here follows an example:
-/// `D{E[x * (a + b)]} == D{x * [E(a) + E(b)]}`
+/// Being `E` the encrypt and `D` the decrypt functions, here follows an
+/// example: `D{E[x * (a + b)]} == D{x * [E(a) + E(b)]}`
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct ElgamalCipher {
     gamma: ExtendedPoint,
