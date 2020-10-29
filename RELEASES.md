@@ -1,3 +1,7 @@
+# 0.3.9
+### Change
+- Update dusk-bls12_381 to 0.1.5.
+
 # 0.3.8
 ### Change
 - Use latest subtle & bls12_381 versions.
