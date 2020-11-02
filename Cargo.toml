@@ -21,6 +21,8 @@ exclude = [".github/workflows/ci.yml", "github/workflows/rust.yml",
 [dependencies]
 dusk-bls12_381 = "0.1.5"
 blake2 = "0.9.0"
+canonical = "0.4"
+canonical_derive = "0.4"
 
 [dependencies.subtle]
 version = "^2.3"
