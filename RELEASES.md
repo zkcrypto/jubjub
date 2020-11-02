@@ -1,3 +1,7 @@
+# 0.3.10
+### Change
+- Derive `Canon` for `Fr` & `AffinePoint`.
+
 # 0.3.9
 ### Change
 - Update dusk-bls12_381 to 0.1.5.

@@ -38,6 +38,8 @@
 #[macro_use]
 extern crate std;
 
+use canonical::Canon;
+use canonical_derive::Canon;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
@@ -61,7 +63,7 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 
 /// This represents a Jubjub point in the affine `(x, y)`
 /// coordinates.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Canon)]
 pub struct AffinePoint {
     x: Fq,
     y: Fq,
