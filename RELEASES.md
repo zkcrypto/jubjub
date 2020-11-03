@@ -1,4 +1,4 @@
-# 0.3.11
+# 0.4.0
 ### Change
 - Derive `Canon` for `ExtendedPoint`.
 - Add `canonical` deps as optional behind a feature flag.
