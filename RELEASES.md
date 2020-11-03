@@ -1,3 +1,7 @@
+# 0.3.11
+### Change
+- Derive `Canon` for `ExtendedPoint`.
+
 # 0.3.10
 ### Change
 - Derive `Canon` for `Fr` & `AffinePoint`.
