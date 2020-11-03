@@ -38,7 +38,9 @@
 #[macro_use]
 extern crate std;
 
+#[cfg(feature = "canon")]
 use canonical::Canon;
+#[cfg(feature = "canon")]
 use canonical_derive::Canon;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -63,7 +65,8 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 
 /// This represents a Jubjub point in the affine `(x, y)`
 /// coordinates.
-#[derive(Clone, Copy, Debug, Canon)]
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "canon", derive(Canon))]
 pub struct AffinePoint {
     x: Fq,
     y: Fq,
@@ -186,6 +189,7 @@ pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "canon", derive(Canon))]
 pub struct ExtendedPoint {
     x: Fq,
     y: Fq,

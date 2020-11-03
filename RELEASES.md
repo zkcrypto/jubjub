@@ -1,3 +1,8 @@
+# 0.4.0
+### Change
+- Derive `Canon` for `ExtendedPoint`.
+- Add `canonical` deps as optional behind a feature flag.
+
 # 0.3.10
 ### Change
 - Derive `Canon` for `Fr` & `AffinePoint`.

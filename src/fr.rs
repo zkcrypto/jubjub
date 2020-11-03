@@ -2,7 +2,9 @@
 //! $\mathbb{F}_r$ where `r =
 //! 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
 
+#[cfg(feature = "canon")]
 use canonical::Canon;
+#[cfg(feature = "canon")]
 use canonical_derive::Canon;
 use core::cmp::{Ord, Ordering, PartialOrd};
 use core::convert::TryInto;
@@ -21,7 +23,8 @@ use crate::Fq;
 // The internal representation of this type is four 64-bit unsigned
 // integers in little-endian order. Elements of Fr are always in
 // Montgomery form; i.e., Fr(a) = aR mod r, with R = 2^256.
-#[derive(Clone, Copy, Eq, Canon)]
+#[derive(Clone, Copy, Eq)]
+#[cfg_attr(feature = "canon", derive(Canon))]
 pub struct Fr(pub(crate) [u64; 4]);
 
 impl fmt::Debug for Fr {
