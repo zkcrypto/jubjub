@@ -185,7 +185,7 @@ pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
 /// * Add it to an `ExtendedPoint`, `AffineNielsPoint` or `ExtendedNielsPoint`.
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Canon)]
 pub struct ExtendedPoint {
     x: Fq,
     y: Fq,
