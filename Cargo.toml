@@ -19,7 +19,7 @@ exclude = [".github/workflows/ci.yml", "github/workflows/rust.yml",
 ]
 
 [dependencies]
-dusk-bls12_381 = {version = "0.2.0", features = ["default"]}
+dusk-bls12_381 = { git = "https://github.com/dusk-network/bls12_381", branch = "vlope11/scalar-no-std", default-features = false }
 blake2 = "0.9.0"
 canonical = {version = "0.4", optional = true}
 canonical_derive = {version = "0.4", optional = true}
@@ -41,5 +41,5 @@ default-features = false
 
 [features]
 default = ["std"]
-std = []
+std = ["dusk-bls12_381/alloc"]
 canon = ["canonical", "canonical_derive", "dusk-bls12_381/canon"]
