@@ -1,4 +1,4 @@
-use crate::{AffinePoint, ExtendedPoint, JubJubScalar};
+use crate::{JubJubAffine, JubJubExtended, JubJubScalar};
 
 use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
@@ -65,23 +65,23 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 /// example: `D{E[x * (a + b)]} == D{x * [E(a) + E(b)]}`
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct ElgamalCipher {
-    gamma: ExtendedPoint,
-    delta: ExtendedPoint,
+    gamma: JubJubExtended,
+    delta: JubJubExtended,
 }
 
 impl ElgamalCipher {
     /// [`ElgamalCipher`] constructor
-    pub fn new(gamma: ExtendedPoint, delta: ExtendedPoint) -> Self {
+    pub fn new(gamma: JubJubExtended, delta: JubJubExtended) -> Self {
         Self { gamma, delta }
     }
 
     /// Getter for the gamma public key
-    pub fn gamma(&self) -> &ExtendedPoint {
+    pub fn gamma(&self) -> &JubJubExtended {
         &self.gamma
     }
 
     /// Getter for the delta ciphertext
-    pub fn delta(&self) -> &ExtendedPoint {
+    pub fn delta(&self) -> &JubJubExtended {
         &self.delta
     }
 
@@ -90,9 +90,9 @@ impl ElgamalCipher {
     /// The decryption will expect the secret of `public`.
     pub fn encrypt(
         secret: &JubJubScalar,
-        public: &ExtendedPoint,
-        generator: &ExtendedPoint,
-        message: &ExtendedPoint,
+        public: &JubJubExtended,
+        generator: &JubJubExtended,
+        message: &JubJubExtended,
     ) -> Self {
         let gamma = generator * secret;
         let delta = message + public * secret;
@@ -101,16 +101,16 @@ impl ElgamalCipher {
     }
 
     /// Perform the decryption with the provided secret.
-    pub fn decrypt(&self, secret: &JubJubScalar) -> ExtendedPoint {
+    pub fn decrypt(&self, secret: &JubJubScalar) -> JubJubExtended {
         self.delta - self.gamma * secret
     }
 
     /// Serialize the cipher into bytes
     pub fn to_bytes(&self) -> [u8; 64] {
-        let gamma: AffinePoint = self.gamma.into();
+        let gamma: JubJubAffine = self.gamma.into();
         let gamma = gamma.to_bytes();
 
-        let delta: AffinePoint = self.delta.into();
+        let delta: JubJubAffine = self.delta.into();
         let delta = delta.to_bytes();
 
         let mut bytes = [0u8; 64];
@@ -129,14 +129,14 @@ impl ElgamalCipher {
         gamma.copy_from_slice(&bytes[..32]);
         delta.copy_from_slice(&bytes[32..]);
 
-        let gamma = AffinePoint::from_bytes(gamma);
+        let gamma = JubJubAffine::from_bytes(gamma);
         let gamma = if gamma.is_some().into() {
             gamma.unwrap()
         } else {
             return None;
         };
 
-        let delta = AffinePoint::from_bytes(delta);
+        let delta = JubJubAffine::from_bytes(delta);
         let delta = if delta.is_some().into() {
             delta.unwrap()
         } else {
@@ -223,9 +223,9 @@ impl<'b> MulAssign<&'b JubJubScalar> for ElgamalCipher {
 #[cfg(test)]
 mod tests {
     use super::ElgamalCipher;
-    use crate::{ExtendedPoint, JubJubScalar, GENERATOR_EXTENDED};
+    use crate::{JubJubExtended, JubJubScalar, GENERATOR_EXTENDED};
 
-    fn gen() -> (JubJubScalar, ExtendedPoint, JubJubScalar, ExtendedPoint) {
+    fn gen() -> (JubJubScalar, JubJubExtended, JubJubScalar, JubJubExtended) {
         let a = JubJubScalar::random(&mut rand::thread_rng());
         let a_g = GENERATOR_EXTENDED * a;
 
@@ -271,7 +271,7 @@ mod tests {
         m.iter_mut()
             .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
 
-        let mut m_g = [ExtendedPoint::default(); 4];
+        let mut m_g = [JubJubExtended::default(); 4];
         m_g.iter_mut()
             .zip(m.iter())
             .for_each(|(x, y)| *x = GENERATOR_EXTENDED * y);
@@ -301,7 +301,7 @@ mod tests {
         m.iter_mut()
             .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
 
-        let mut m_g = [ExtendedPoint::default(); 4];
+        let mut m_g = [JubJubExtended::default(); 4];
         m_g.iter_mut()
             .zip(m.iter())
             .for_each(|(x, y)| *x = GENERATOR_EXTENDED * y);
@@ -331,7 +331,7 @@ mod tests {
         m.iter_mut()
             .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
 
-        let mut m_g = [ExtendedPoint::default(); 4];
+        let mut m_g = [JubJubExtended::default(); 4];
         m_g.iter_mut()
             .zip(m.iter())
             .for_each(|(x, y)| *x = GENERATOR_EXTENDED * y);

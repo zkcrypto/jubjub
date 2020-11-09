@@ -128,7 +128,7 @@ fn test_multiply_additive_identity() {
 #[test]
 fn test_dhke() {
     let mut rng = new_rng();
-    let g: ExtendedPoint = GENERATOR.into();
+    let g: JubJubExtended = GENERATOR.into();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
         let a = JubJubScalar::new_random(&mut rng);
         let b = JubJubScalar::new_random(&mut rng);

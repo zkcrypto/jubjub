@@ -5,14 +5,14 @@
 //!
 //! # API
 //!
-//! * `AffinePoint` / `ExtendedPoint` which are implementations of Jubjub group
-//!   arithmetic
+//! * `JubJubAffine` / `JubJubExtended` which are implementations of Jubjub
+//!   group arithmetic
 //! * `AffineNielsPoint` / `ExtendedNielsPoint` which are pre-processed Jubjub
 //!   points
 //! * `BlsScalar`, which is the base field of Jubjub
 //! * `Fr`, which is the scalar field of Jubjub
-//! * `batch_normalize` for converting many `ExtendedPoint`s into `AffinePoint`s
-//!   efficiently.
+//! * `batch_normalize` for converting many `JubJubExtended`s into
+//!   `JubJubAffine`s efficiently.
 //!
 //! # Constant Time
 //!
@@ -69,40 +69,40 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 /// coordinates.
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "canon", derive(Canon))]
-pub struct AffinePoint {
+pub struct JubJubAffine {
     x: BlsScalar,
     y: BlsScalar,
 }
 
-impl Neg for AffinePoint {
-    type Output = AffinePoint;
+impl Neg for JubJubAffine {
+    type Output = JubJubAffine;
 
     /// This computes the negation of a point `P = (x, y)`
     /// as `-P = (-x, y)`.
     #[inline]
-    fn neg(self) -> AffinePoint {
-        AffinePoint {
+    fn neg(self) -> JubJubAffine {
+        JubJubAffine {
             x: -self.x,
             y: self.y,
         }
     }
 }
 
-impl ConstantTimeEq for AffinePoint {
+impl ConstantTimeEq for JubJubAffine {
     fn ct_eq(&self, other: &Self) -> Choice {
         self.x.ct_eq(&other.x) & self.y.ct_eq(&other.y)
     }
 }
 
-impl PartialEq for AffinePoint {
+impl PartialEq for JubJubAffine {
     fn eq(&self, other: &Self) -> bool {
         self.ct_eq(other).unwrap_u8() == 1
     }
 }
 
-impl ConditionallySelectable for AffinePoint {
+impl ConditionallySelectable for JubJubAffine {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        AffinePoint {
+        JubJubAffine {
             x: BlsScalar::conditional_select(&a.x, &b.x, choice),
             y: BlsScalar::conditional_select(&a.y, &b.y, choice),
         }
@@ -119,7 +119,7 @@ impl ConditionallySelectable for AffinePoint {
 /// Using:
 ///     x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca
 //      y = 0x0000000000000000000000000000000000000000000000000000000000000012
-pub const GENERATOR: AffinePoint = AffinePoint {
+pub const GENERATOR: JubJubAffine = JubJubAffine {
     x: BlsScalar::from_raw([
         0x4df7b7ffec7beaca,
         0x2e3ebb21fd6c54ed,
@@ -134,8 +134,8 @@ pub const GENERATOR: AffinePoint = AffinePoint {
     ]),
 };
 
-/// [`GENERATOR`] in [`ExtendedPoint`] form
-pub const GENERATOR_EXTENDED: ExtendedPoint = ExtendedPoint {
+/// [`GENERATOR`] in [`JubJubExtended`] form
+pub const GENERATOR_EXTENDED: JubJubExtended = JubJubExtended {
     x: GENERATOR.x,
     y: GENERATOR.y,
     z: BlsScalar::one(),
@@ -149,7 +149,7 @@ pub const GENERATOR_EXTENDED: ExtendedPoint = ExtendedPoint {
 /// Using:
 ///     x = 0x5e67b8f316f414f7bd9514c773fd4456931e316a39fe4541921710179df76377
 //      y = 0x43d80eb3b2f3eb1b7b162dbeeb3b34fd9949ba0f82a5507a6705b707162e3ef8
-pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
+pub const GENERATOR_NUMS: JubJubAffine = JubJubAffine {
     x: BlsScalar::from_raw([
         0x921710179df76377,
         0x931e316a39fe4541,
@@ -164,8 +164,8 @@ pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
     ]),
 };
 
-/// [`GENERATOR_NUMS`] in [`ExtendedPoint`] form
-pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
+/// [`GENERATOR_NUMS`] in [`JubJubExtended`] form
+pub const GENERATOR_NUMS_EXTENDED: JubJubExtended = JubJubExtended {
     x: GENERATOR_NUMS.x,
     y: GENERATOR_NUMS.y,
     z: BlsScalar::one(),
@@ -187,12 +187,12 @@ pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
 /// form:
 ///
 /// * Convert it into a point in the affine form.
-/// * Add it to an `ExtendedPoint`, `AffineNielsPoint` or `ExtendedNielsPoint`.
+/// * Add it to an `JubJubExtended`, `AffineNielsPoint` or `ExtendedNielsPoint`.
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "canon", derive(Canon))]
-pub struct ExtendedPoint {
+pub struct JubJubExtended {
     x: BlsScalar,
     y: BlsScalar,
     z: BlsScalar,
@@ -200,7 +200,7 @@ pub struct ExtendedPoint {
     t2: BlsScalar,
 }
 
-impl ConstantTimeEq for ExtendedPoint {
+impl ConstantTimeEq for JubJubExtended {
     fn ct_eq(&self, other: &Self) -> Choice {
         // (x/z, y/z) = (x'/z', y'/z') is implied by
         //      (xz'z = x'z'z) and
@@ -212,9 +212,9 @@ impl ConstantTimeEq for ExtendedPoint {
     }
 }
 
-impl ConditionallySelectable for ExtendedPoint {
+impl ConditionallySelectable for JubJubExtended {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        ExtendedPoint {
+        JubJubExtended {
             x: BlsScalar::conditional_select(&a.x, &b.x, choice),
             y: BlsScalar::conditional_select(&a.y, &b.y, choice),
             z: BlsScalar::conditional_select(&a.z, &b.z, choice),
@@ -224,21 +224,21 @@ impl ConditionallySelectable for ExtendedPoint {
     }
 }
 
-impl PartialEq for ExtendedPoint {
+impl PartialEq for JubJubExtended {
     fn eq(&self, other: &Self) -> bool {
         self.ct_eq(other).unwrap_u8() == 1
     }
 }
 
-impl Neg for ExtendedPoint {
-    type Output = ExtendedPoint;
+impl Neg for JubJubExtended {
+    type Output = JubJubExtended;
 
     /// Computes the negation of a point `P = (X, Y, Z, T)`
     /// as `-P = (-X, Y, Z, -T1, T2)`. The choice of `T1`
     /// is made without loss of generality.
     #[inline]
-    fn neg(self) -> ExtendedPoint {
-        ExtendedPoint {
+    fn neg(self) -> JubJubExtended {
+        JubJubExtended {
             x: -self.x,
             y: self.y,
             z: self.z,
@@ -248,11 +248,11 @@ impl Neg for ExtendedPoint {
     }
 }
 
-impl From<AffinePoint> for ExtendedPoint {
+impl From<JubJubAffine> for JubJubExtended {
     /// Constructs an extended point (with `Z = 1`) from
     /// an affine point using the map `(x, y) => (x, y, 1, x, y)`.
-    fn from(affine: AffinePoint) -> ExtendedPoint {
-        ExtendedPoint {
+    fn from(affine: JubJubAffine) -> JubJubExtended {
+        JubJubExtended {
             x: affine.x,
             y: affine.y,
             z: BlsScalar::one(),
@@ -262,33 +262,33 @@ impl From<AffinePoint> for ExtendedPoint {
     }
 }
 
-impl<'a> From<&'a ExtendedPoint> for AffinePoint {
+impl<'a> From<&'a JubJubExtended> for JubJubAffine {
     /// Constructs an affine point from an extended point
     /// using the map `(X, Y, Z, T1, T2) => (XZ, Y/Z)`
     /// as Z is always nonzero. **This requires a field inversion
     /// and so it is recommended to perform these in a batch
     /// using [`batch_normalize`](crate::batch_normalize) instead.**
-    fn from(extended: &'a ExtendedPoint) -> AffinePoint {
+    fn from(extended: &'a JubJubExtended) -> JubJubAffine {
         // Z coordinate is always nonzero, so this is
         // its inverse.
         let zinv = extended.z.invert().unwrap();
 
-        AffinePoint {
+        JubJubAffine {
             x: extended.x * &zinv,
             y: extended.y * &zinv,
         }
     }
 }
 
-impl From<ExtendedPoint> for AffinePoint {
-    fn from(extended: ExtendedPoint) -> AffinePoint {
-        AffinePoint::from(&extended)
+impl From<JubJubExtended> for JubJubAffine {
+    fn from(extended: JubJubExtended) -> JubJubAffine {
+        JubJubAffine::from(&extended)
     }
 }
 
 /// This is a pre-processed version of an affine point `(x, y)`
 /// in the form `(y + x, y - x, x * y * 2d)`. This can be added to an
-/// [`ExtendedPoint`](crate::ExtendedPoint).
+/// [`JubJubExtended`](crate::JubJubExtended).
 #[derive(Clone, Copy, Debug)]
 pub struct AffineNielsPoint {
     y_plus_x: BlsScalar,
@@ -307,10 +307,10 @@ impl AffineNielsPoint {
     }
 
     #[inline]
-    fn multiply(&self, by: &[u8; 32]) -> ExtendedPoint {
+    fn multiply(&self, by: &[u8; 32]) -> JubJubExtended {
         let zero = AffineNielsPoint::identity();
 
-        let mut acc = ExtendedPoint::identity();
+        let mut acc = JubJubExtended::identity();
 
         // This is a simple double-and-add implementation of point
         // multiplication, moving from most significant to least
@@ -335,20 +335,20 @@ impl AffineNielsPoint {
 
     /// Multiplies this point by the specific little-endian bit pattern in the
     /// given byte array, ignoring the highest four bits.
-    pub fn multiply_bits(&self, by: &[u8; 32]) -> ExtendedPoint {
+    pub fn multiply_bits(&self, by: &[u8; 32]) -> JubJubExtended {
         self.multiply(by)
     }
 }
 
 impl<'a, 'b> Mul<&'b Fr> for &'a AffineNielsPoint {
-    type Output = ExtendedPoint;
+    type Output = JubJubExtended;
 
-    fn mul(self, other: &'b Fr) -> ExtendedPoint {
+    fn mul(self, other: &'b Fr) -> JubJubExtended {
         self.multiply(&other.to_bytes())
     }
 }
 
-impl_binops_multiplicative_mixed!(AffineNielsPoint, Fr, ExtendedPoint);
+impl_binops_multiplicative_mixed!(AffineNielsPoint, Fr, JubJubExtended);
 
 impl ConditionallySelectable for AffineNielsPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
@@ -409,10 +409,10 @@ impl ExtendedNielsPoint {
     }
 
     #[inline]
-    fn multiply(&self, by: &[u8; 32]) -> ExtendedPoint {
+    fn multiply(&self, by: &[u8; 32]) -> JubJubExtended {
         let zero = ExtendedNielsPoint::identity();
 
-        let mut acc = ExtendedPoint::identity();
+        let mut acc = JubJubExtended::identity();
 
         // This is a simple double-and-add implementation of point
         // multiplication, moving from most significant to least
@@ -437,20 +437,20 @@ impl ExtendedNielsPoint {
 
     /// Multiplies this point by the specific little-endian bit pattern in the
     /// given byte array, ignoring the highest four bits.
-    pub fn multiply_bits(&self, by: &[u8; 32]) -> ExtendedPoint {
+    pub fn multiply_bits(&self, by: &[u8; 32]) -> JubJubExtended {
         self.multiply(by)
     }
 }
 
 impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedNielsPoint {
-    type Output = ExtendedPoint;
+    type Output = JubJubExtended;
 
-    fn mul(self, other: &'b Fr) -> ExtendedPoint {
+    fn mul(self, other: &'b Fr) -> JubJubExtended {
         self.multiply(&other.to_bytes())
     }
 }
 
-impl_binops_multiplicative_mixed!(ExtendedNielsPoint, Fr, ExtendedPoint);
+impl_binops_multiplicative_mixed!(ExtendedNielsPoint, Fr, JubJubExtended);
 
 /// `d = -(10240/10241)`
 pub const EDWARDS_D: BlsScalar = BlsScalar::from_raw([
@@ -468,30 +468,30 @@ pub const EDWARDS_D2: BlsScalar = BlsScalar::from_raw([
     0x552631ce97f45691,
 ]);
 
-impl AffinePoint {
+impl JubJubAffine {
     /// Constructs the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
-        AffinePoint {
+        JubJubAffine {
             x: BlsScalar::zero(),
             y: BlsScalar::one(),
         }
     }
 
     /// Multiplies this point by the cofactor, producing an
-    /// `ExtendedPoint`
-    pub fn mul_by_cofactor(&self) -> ExtendedPoint {
-        ExtendedPoint::from(*self).mul_by_cofactor()
+    /// `JubJubExtended`
+    pub fn mul_by_cofactor(&self) -> JubJubExtended {
+        JubJubExtended::from(*self).mul_by_cofactor()
     }
 
     /// Determines if this point is of small order.
     pub fn is_small_order(&self) -> Choice {
-        ExtendedPoint::from(*self).is_small_order()
+        JubJubExtended::from(*self).is_small_order()
     }
 
     /// Determines if this point is torsion free and so is
     /// in the prime order subgroup.
     pub fn is_torsion_free(&self) -> Choice {
-        ExtendedPoint::from(*self).is_torsion_free()
+        JubJubExtended::from(*self).is_torsion_free()
     }
 
     /// Determines if this point is prime order, or in other words that
@@ -499,7 +499,7 @@ impl AffinePoint {
     /// identity is `r`. This is equivalent to checking that the point
     /// is both torsion free and not the identity.
     pub fn is_prime_order(&self) -> Choice {
-        let extended = ExtendedPoint::from(*self);
+        let extended = JubJubExtended::from(*self);
         extended.is_torsion_free() & (!extended.is_identity())
     }
 
@@ -552,7 +552,7 @@ impl AffinePoint {
                 let final_x =
                     BlsScalar::conditional_select(&x, &x_negated, flip_sign);
 
-                CtOption::new(AffinePoint { x: final_x, y }, Choice::from(1u8))
+                CtOption::new(JubJubAffine { x: final_x, y }, Choice::from(1u8))
             })
         })
     }
@@ -577,10 +577,13 @@ impl AffinePoint {
         }
     }
 
-    /// Constructs an AffinePoint given `x` and `y` without checking
+    /// Constructs an JubJubAffine given `x` and `y` without checking
     /// that the point is on the curve.
-    pub const fn from_raw_unchecked(x: BlsScalar, y: BlsScalar) -> AffinePoint {
-        AffinePoint { x, y }
+    pub const fn from_raw_unchecked(
+        x: BlsScalar,
+        y: BlsScalar,
+    ) -> JubJubAffine {
+        JubJubAffine { x, y }
     }
 
     /// This is only for debugging purposes and not
@@ -595,7 +598,7 @@ impl AffinePoint {
     }
 }
 
-impl ExtendedPoint {
+impl JubJubExtended {
     /// Returns the `x`-coordinate of this point.
     pub fn get_x(&self) -> BlsScalar {
         self.x
@@ -623,7 +626,7 @@ impl ExtendedPoint {
 
     /// Constructs an extended point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
-        ExtendedPoint {
+        JubJubExtended {
             x: BlsScalar::zero(),
             y: BlsScalar::one(),
             z: BlsScalar::one(),
@@ -664,7 +667,7 @@ impl ExtendedPoint {
     }
 
     /// Multiplies this element by the cofactor `8`.
-    pub fn mul_by_cofactor(&self) -> ExtendedPoint {
+    pub fn mul_by_cofactor(&self) -> JubJubExtended {
         self.double().double().double()
     }
 
@@ -682,16 +685,16 @@ impl ExtendedPoint {
     /// Returns two scalars suitable for hashing that represent the
     /// Extended Point.
     pub fn to_hash_inputs(&self) -> [BlsScalar; 2] {
-        // The same AffinePoint can have different ExtendedPoint
+        // The same JubJubAffine can have different JubJubExtended
         // representations, therefore we convert from Extended to Affine
         // before hashing, to ensure deterministic result
-        let p = AffinePoint::from(self);
+        let p = JubJubAffine::from(self);
         [p.x, p.y]
     }
 
     /// Computes the doubling of a point more efficiently than a point can
     /// be added to itself.
-    pub fn double(&self) -> ExtendedPoint {
+    pub fn double(&self) -> JubJubExtended {
         // Doubling is more efficient (three multiplications, four squarings)
         // when we work within the projective coordinate space (U:Z, V:Z). We
         // rely on the most efficient formula, "dbl-2008-bbjlp", as described
@@ -796,7 +799,7 @@ impl ExtendedPoint {
     /// point is on the curve.
     #[cfg(test)]
     fn is_on_curve_vartime(&self) -> bool {
-        let affine = AffinePoint::from(*self);
+        let affine = JubJubAffine::from(*self);
 
         self.z != BlsScalar::zero()
             && affine.is_on_curve_vartime()
@@ -804,21 +807,21 @@ impl ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Mul<&'b Fr> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
-    fn mul(self, other: &'b Fr) -> ExtendedPoint {
+    fn mul(self, other: &'b Fr) -> JubJubExtended {
         self.multiply(&other.to_bytes())
     }
 }
 
-impl_binops_multiplicative!(ExtendedPoint, Fr);
+impl_binops_multiplicative!(JubJubExtended, Fr);
 
-impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn add(self, other: &'b ExtendedNielsPoint) -> ExtendedPoint {
+    fn add(self, other: &'b ExtendedNielsPoint) -> JubJubExtended {
         // We perform addition in the extended coordinates. Here we use
         // a formula presented by Hisil, Wong, Carter and Dawson in
         // "Twisted Edward Curves Revisited" which only requires 8M.
@@ -853,11 +856,11 @@ impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn sub(self, other: &'b ExtendedNielsPoint) -> ExtendedPoint {
+    fn sub(self, other: &'b ExtendedNielsPoint) -> JubJubExtended {
         let a = (&self.y - &self.x) * &other.y_plus_x;
         let b = (&self.y + &self.x) * &other.y_minus_x;
         let c = &self.t1 * &self.t2 * &other.t2d;
@@ -873,13 +876,13 @@ impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl_binops_additive!(ExtendedPoint, ExtendedNielsPoint);
+impl_binops_additive!(JubJubExtended, ExtendedNielsPoint);
 
-impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn add(self, other: &'b AffineNielsPoint) -> ExtendedPoint {
+    fn add(self, other: &'b AffineNielsPoint) -> JubJubExtended {
         // This is identical to the addition formula for `ExtendedNielsPoint`,
         // except we can assume that `other.z` is one, so that we perform
         // 7 multiplications.
@@ -901,11 +904,11 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn sub(self, other: &'b AffineNielsPoint) -> ExtendedPoint {
+    fn sub(self, other: &'b AffineNielsPoint) -> JubJubExtended {
         let a = (&self.y - &self.x) * &other.y_plus_x;
         let b = (&self.y + &self.x) * &other.y_minus_x;
         let c = &self.t1 * &self.t2 * &other.t2d;
@@ -921,47 +924,47 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl_binops_additive!(ExtendedPoint, AffineNielsPoint);
+impl_binops_additive!(JubJubExtended, AffineNielsPoint);
 
-impl<'a, 'b> Add<&'b ExtendedPoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Add<&'b JubJubExtended> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[inline]
-    fn add(self, other: &'b ExtendedPoint) -> ExtendedPoint {
+    fn add(self, other: &'b JubJubExtended) -> JubJubExtended {
         self + other.to_niels()
     }
 }
 
-impl<'a, 'b> Sub<&'b ExtendedPoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Sub<&'b JubJubExtended> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[inline]
-    fn sub(self, other: &'b ExtendedPoint) -> ExtendedPoint {
+    fn sub(self, other: &'b JubJubExtended) -> JubJubExtended {
         self - other.to_niels()
     }
 }
 
-impl_binops_additive!(ExtendedPoint, ExtendedPoint);
+impl_binops_additive!(JubJubExtended, JubJubExtended);
 
-impl<'a, 'b> Add<&'b AffinePoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Add<&'b JubJubAffine> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[inline]
-    fn add(self, other: &'b AffinePoint) -> ExtendedPoint {
+    fn add(self, other: &'b JubJubAffine) -> JubJubExtended {
         self + other.to_niels()
     }
 }
 
-impl<'a, 'b> Sub<&'b AffinePoint> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
+impl<'a, 'b> Sub<&'b JubJubAffine> for &'a JubJubExtended {
+    type Output = JubJubExtended;
 
     #[inline]
-    fn sub(self, other: &'b AffinePoint) -> ExtendedPoint {
+    fn sub(self, other: &'b JubJubAffine) -> JubJubExtended {
         self - other.to_niels()
     }
 }
 
-impl_binops_additive!(ExtendedPoint, AffinePoint);
+impl_binops_additive!(JubJubExtended, JubJubAffine);
 
 /// This is a "completed" point produced during a point doubling or
 /// addition routine. These points exist in the `(X:Z, Y:T)` model
@@ -983,8 +986,8 @@ impl CompletedPoint {
     /// The resulting T coordinate is xtyz/zt = xy, and so
     /// T1 = x, T2 = y, without loss of generality.
     #[inline]
-    fn into_extended(self) -> ExtendedPoint {
-        ExtendedPoint {
+    fn into_extended(self) -> JubJubExtended {
+        JubJubExtended {
             x: &self.x * &self.t,
             y: &self.y * &self.z,
             z: &self.z * &self.t,
@@ -994,33 +997,33 @@ impl CompletedPoint {
     }
 }
 
-impl Default for AffinePoint {
+impl Default for JubJubAffine {
     /// Returns the identity.
-    fn default() -> AffinePoint {
-        AffinePoint::identity()
+    fn default() -> JubJubAffine {
+        JubJubAffine::identity()
     }
 }
 
-impl Default for ExtendedPoint {
+impl Default for JubJubExtended {
     /// Returns the identity.
-    fn default() -> ExtendedPoint {
-        ExtendedPoint::identity()
+    fn default() -> JubJubExtended {
+        JubJubExtended::identity()
     }
 }
 
-/// This takes a mutable slice of `ExtendedPoint`s and "normalizes" them using
+/// This takes a mutable slice of `JubJubExtended`s and "normalizes" them using
 /// only a single inversion for the entire batch. This normalization results in
 /// all of the points having a Z-coordinate of one. Further, an iterator is
-/// returned which can be used to obtain `AffinePoint`s for each element in the
+/// returned which can be used to obtain `JubJubAffine`s for each element in the
 /// slice.
 ///
 /// This costs 5 multiplications per element, and a field inversion.
 pub fn batch_normalize<'a>(
-    y: &'a mut [ExtendedPoint],
-) -> impl Iterator<Item = AffinePoint> + 'a {
+    y: &'a mut [JubJubExtended],
+) -> impl Iterator<Item = JubJubAffine> + 'a {
     let mut acc = BlsScalar::one();
     for p in y.iter_mut() {
-        // We use the `t1` field of `ExtendedPoint` to store the product
+        // We use the `t1` field of `JubJubExtended` to store the product
         // of previous z-coordinates seen.
         p.t1 = acc;
         acc *= &p.z;
@@ -1052,12 +1055,12 @@ pub fn batch_normalize<'a>(
     // doesn't encode this fact. Let us offer affine points
     // to the caller.
 
-    y.iter().map(|p| AffinePoint { x: p.x, y: p.y })
+    y.iter().map(|p| JubJubAffine { x: p.x, y: p.y })
 }
 
 #[test]
 fn test_is_on_curve_var() {
-    assert!(AffinePoint::identity().is_on_curve_vartime());
+    assert!(JubJubAffine::identity().is_on_curve_vartime());
 }
 
 #[test]
@@ -1078,8 +1081,8 @@ fn test_affine_point_generator_nums_has_order_p() {
 #[test]
 fn test_affine_point_generator_is_not_identity() {
     assert_ne!(
-        ExtendedPoint::from(GENERATOR.mul_by_cofactor()),
-        ExtendedPoint::identity()
+        JubJubExtended::from(GENERATOR.mul_by_cofactor()),
+        JubJubExtended::identity()
     );
 }
 
@@ -1087,15 +1090,15 @@ fn test_affine_point_generator_is_not_identity() {
 fn test_extended_point_generator_is_not_identity() {
     assert_ne!(
         GENERATOR_EXTENDED.mul_by_cofactor(),
-        ExtendedPoint::identity()
+        JubJubExtended::identity()
     );
 }
 
 #[test]
 fn test_affine_point_generator_nums_is_not_identity() {
     assert_ne!(
-        ExtendedPoint::from(GENERATOR_NUMS.mul_by_cofactor()),
-        ExtendedPoint::identity()
+        JubJubExtended::from(GENERATOR_NUMS.mul_by_cofactor()),
+        JubJubExtended::identity()
     );
 }
 
@@ -1110,15 +1113,15 @@ fn test_d_is_non_quadratic_residue() {
 fn test_affine_niels_point_identity() {
     assert_eq!(
         AffineNielsPoint::identity().y_plus_x,
-        AffinePoint::identity().to_niels().y_plus_x
+        JubJubAffine::identity().to_niels().y_plus_x
     );
     assert_eq!(
         AffineNielsPoint::identity().y_minus_x,
-        AffinePoint::identity().to_niels().y_minus_x
+        JubJubAffine::identity().to_niels().y_minus_x
     );
     assert_eq!(
         AffineNielsPoint::identity().t2d,
-        AffinePoint::identity().to_niels().t2d
+        JubJubAffine::identity().to_niels().t2d
     );
 }
 
@@ -1126,25 +1129,25 @@ fn test_affine_niels_point_identity() {
 fn test_extended_niels_point_identity() {
     assert_eq!(
         ExtendedNielsPoint::identity().y_plus_x,
-        ExtendedPoint::identity().to_niels().y_plus_x
+        JubJubExtended::identity().to_niels().y_plus_x
     );
     assert_eq!(
         ExtendedNielsPoint::identity().y_minus_x,
-        ExtendedPoint::identity().to_niels().y_minus_x
+        JubJubExtended::identity().to_niels().y_minus_x
     );
     assert_eq!(
         ExtendedNielsPoint::identity().z,
-        ExtendedPoint::identity().to_niels().z
+        JubJubExtended::identity().to_niels().z
     );
     assert_eq!(
         ExtendedNielsPoint::identity().t2d,
-        ExtendedPoint::identity().to_niels().t2d
+        JubJubExtended::identity().to_niels().t2d
     );
 }
 
 #[test]
 fn test_assoc() {
-    let p = ExtendedPoint::from(AffinePoint {
+    let p = JubJubExtended::from(JubJubAffine {
         x: BlsScalar::from_raw([
             0x81c571e5d883cfb0,
             0x049f7a686f147029,
@@ -1169,7 +1172,7 @@ fn test_assoc() {
 
 #[test]
 fn test_batch_normalize() {
-    let mut p = ExtendedPoint::from(AffinePoint {
+    let mut p = JubJubExtended::from(JubJubAffine {
         x: BlsScalar::from_raw([
             0x81c571e5d883cfb0,
             0x049f7a686f147029,
@@ -1196,23 +1199,23 @@ fn test_batch_normalize() {
     }
 
     let expected: std::vec::Vec<_> =
-        y.iter().map(|p| AffinePoint::from(*p)).collect();
+        y.iter().map(|p| JubJubAffine::from(*p)).collect();
     let result1: std::vec::Vec<_> = batch_normalize(&mut y).collect();
     for i in 0..10 {
         assert!(expected[i] == result1[i]);
         assert!(y[i].is_on_curve_vartime());
-        assert!(AffinePoint::from(y[i]) == expected[i]);
+        assert!(JubJubAffine::from(y[i]) == expected[i]);
     }
     let result2: std::vec::Vec<_> = batch_normalize(&mut y).collect();
     for i in 0..10 {
         assert!(expected[i] == result2[i]);
         assert!(y[i].is_on_curve_vartime());
-        assert!(AffinePoint::from(y[i]) == expected[i]);
+        assert!(JubJubAffine::from(y[i]) == expected[i]);
     }
 }
 
 #[cfg(test)]
-const FULL_GENERATOR: AffinePoint = AffinePoint::from_raw_unchecked(
+const FULL_GENERATOR: JubJubAffine = JubJubAffine::from_raw_unchecked(
     BlsScalar::from_raw([
         0xe4b3d35df1a7adfe,
         0xcaf55d1b29bf81af,
@@ -1223,8 +1226,8 @@ const FULL_GENERATOR: AffinePoint = AffinePoint::from_raw_unchecked(
 );
 
 #[cfg(test)]
-const EIGHT_TORSION: [AffinePoint; 8] = [
-    AffinePoint::from_raw_unchecked(
+const EIGHT_TORSION: [JubJubAffine; 8] = [
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([
             0xd92e6a7927200d43,
             0x7aa41ac43dae8582,
@@ -1238,7 +1241,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
             0x4958bdb21966982e,
         ]),
     ),
-    AffinePoint::from_raw_unchecked(
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([
             0xfffeffff00000001,
             0x67baa40089fb5bfe,
@@ -1247,7 +1250,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
         BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
     ),
-    AffinePoint::from_raw_unchecked(
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([
             0xd92e6a7927200d43,
             0x7aa41ac43dae8582,
@@ -1261,7 +1264,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
             0x2a94e9a11036e51a,
         ]),
     ),
-    AffinePoint::from_raw_unchecked(
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
         BlsScalar::from_raw([
             0xffffffff00000000,
@@ -1270,7 +1273,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
             0x73eda753299d7d48,
         ]),
     ),
-    AffinePoint::from_raw_unchecked(
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([
             0x26d19585d8dff2be,
             0xd919893ec24fd67c,
@@ -1284,7 +1287,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
             0x2a94e9a11036e51a,
         ]),
     ),
-    AffinePoint::from_raw_unchecked(
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([
             0x1000000000000,
             0xec03000276030000,
@@ -1293,7 +1296,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
         BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
     ),
-    AffinePoint::from_raw_unchecked(
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([
             0x26d19585d8dff2be,
             0xd919893ec24fd67c,
@@ -1307,7 +1310,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
             0x4958bdb21966982e,
         ]),
     ),
-    AffinePoint::from_raw_unchecked(
+    JubJubAffine::from_raw_unchecked(
         BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
         BlsScalar::from_raw([0x1, 0x0, 0x0, 0x0]),
     ),
@@ -1315,7 +1318,7 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
 
 #[test]
 fn find_eight_torsion() {
-    let g = ExtendedPoint::from(FULL_GENERATOR);
+    let g = JubJubExtended::from(FULL_GENERATOR);
     assert!(g.is_small_order().unwrap_u8() == 0);
     let g = g.multiply(&FR_MODULUS_BYTES);
     assert!(g.is_small_order().unwrap_u8() == 1);
@@ -1323,7 +1326,7 @@ fn find_eight_torsion() {
     let mut cur = g;
 
     for (i, point) in EIGHT_TORSION.iter().enumerate() {
-        let tmp = AffinePoint::from(cur);
+        let tmp = JubJubAffine::from(cur);
         if &tmp != point {
             panic!("{}th torsion point should be {:?}", i, tmp);
         }
@@ -1336,11 +1339,11 @@ fn find_eight_torsion() {
 fn find_curve_generator() {
     let mut trial_bytes = [0; 32];
     for _ in 0..255 {
-        let a = AffinePoint::from_bytes(trial_bytes);
+        let a = JubJubAffine::from_bytes(trial_bytes);
         if a.is_some().unwrap_u8() == 1 {
             let a = a.unwrap();
             assert!(a.is_on_curve_vartime());
-            let b = ExtendedPoint::from(a);
+            let b = JubJubExtended::from(a);
             let b = b.multiply(&FR_MODULUS_BYTES);
             assert!(b.is_small_order().unwrap_u8() == 1);
             let b = b.double();
@@ -1383,14 +1386,14 @@ fn second_gen_nums() {
         hasher.update(counter.to_le_bytes());
         let res = hasher.finalize();
         array.copy_from_slice(&res[0..32]);
-        if AffinePoint::from_bytes(array.clone()).is_some().into()
-            && AffinePoint::from_bytes(array)
+        if JubJubAffine::from_bytes(array.clone()).is_some().into()
+            && JubJubAffine::from_bytes(array)
                 .unwrap()
                 .is_prime_order()
                 .unwrap_u8()
                 == 1
         {
-            assert!(GENERATOR_NUMS == AffinePoint::from_bytes(array).unwrap());
+            assert!(GENERATOR_NUMS == JubJubAffine::from_bytes(array).unwrap());
         }
         counter += 1;
     }
@@ -1436,7 +1439,7 @@ fn test_mul_consistency() {
         0x0b677e29380a97a7,
     ]);
     assert_eq!(a * b, c);
-    let p = ExtendedPoint::from(AffinePoint {
+    let p = JubJubExtended::from(JubJubAffine {
         x: BlsScalar::from_raw([
             0x81c571e5d883cfb0,
             0x049f7a686f147029,
@@ -1459,7 +1462,7 @@ fn test_mul_consistency() {
     assert_eq!(p.to_niels() * c, (p.to_niels() * a) * b);
 
     // Test Mul implemented on AffineNielsPoint
-    let p_affine_niels = AffinePoint::from(p).to_niels();
+    let p_affine_niels = JubJubAffine::from(p).to_niels();
     assert_eq!(p * c, (p_affine_niels * a) * b);
     assert_eq!(p_affine_niels * c, (p * a) * b);
     assert_eq!(p_affine_niels * c, (p_affine_niels * a) * b);
@@ -1555,9 +1558,9 @@ fn test_serialization_consistency() {
 
     for expected_serialized in y {
         assert!(p.is_on_curve_vartime());
-        let affine = AffinePoint::from(p);
+        let affine = JubJubAffine::from(p);
         let serialized = affine.to_bytes();
-        let deserialized = AffinePoint::from_bytes(serialized).unwrap();
+        let deserialized = JubJubAffine::from_bytes(serialized).unwrap();
         assert_eq!(affine, deserialized);
         assert_eq!(expected_serialized, serialized);
         p = p + &gen;
@@ -1565,6 +1568,6 @@ fn test_serialization_consistency() {
 }
 
 /// Compute a shared secret `secret · public` using DHKE protocol
-pub fn dhke(secret: &Fr, public: &ExtendedPoint) -> AffinePoint {
+pub fn dhke(secret: &Fr, public: &JubJubExtended) -> JubJubAffine {
     public.mul(secret).into()
 }
