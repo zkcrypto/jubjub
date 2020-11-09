@@ -14,18 +14,18 @@ pub trait MyRandom {
     fn new_random<T: RngCore>(rng: &mut T) -> Self;
 }
 
-impl MyRandom for Fq {
+impl MyRandom for BlsScalar {
     fn new_random<T: RngCore>(rng: &mut T) -> Self {
         let mut random_bytes = [0u8; 64];
         rng.fill_bytes(&mut random_bytes);
-        Fq::from_bytes_wide(&random_bytes)
+        BlsScalar::from_bytes_wide(&random_bytes)
     }
 }
 
-impl MyRandom for Fr {
+impl MyRandom for JubJubScalar {
     fn new_random<T: RngCore>(rng: &mut T) -> Self {
         let mut random_bytes = [0u8; 64];
         rng.fill_bytes(&mut random_bytes);
-        Fr::from_bytes_wide(&random_bytes)
+        JubJubScalar::from_bytes_wide(&random_bytes)
     }
 }

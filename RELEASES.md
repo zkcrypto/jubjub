@@ -1,6 +1,7 @@
-# 0.4.1
+# 0.5.0
 ### Change
 - Update `dusk-bls12_381` to `0.3.0`.
+- Export `Fr` as `JubJubScalar`
 - Create no-std compatibility via feature.
 
 # 0.4.0

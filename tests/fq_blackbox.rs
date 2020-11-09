@@ -7,8 +7,8 @@ use dusk_jubjub::*;
 fn test_to_and_from_bytes() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        assert_eq!(a, Fq::from_bytes(&Fq::to_bytes(&a)).unwrap());
+        let a = BlsScalar::new_random(&mut rng);
+        assert_eq!(a, BlsScalar::from_bytes(&BlsScalar::to_bytes(&a)).unwrap());
     }
 }
 
@@ -16,9 +16,9 @@ fn test_to_and_from_bytes() {
 fn test_additive_associativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        let b = Fq::new_random(&mut rng);
-        let c = Fq::new_random(&mut rng);
+        let a = BlsScalar::new_random(&mut rng);
+        let b = BlsScalar::new_random(&mut rng);
+        let c = BlsScalar::new_random(&mut rng);
         assert_eq!((a + b) + c, a + (b + c))
     }
 }
@@ -27,9 +27,9 @@ fn test_additive_associativity() {
 fn test_additive_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        assert_eq!(a, a + Fq::zero());
-        assert_eq!(a, Fq::zero() + a);
+        let a = BlsScalar::new_random(&mut rng);
+        assert_eq!(a, a + BlsScalar::zero());
+        assert_eq!(a, BlsScalar::zero() + a);
     }
 }
 
@@ -37,9 +37,9 @@ fn test_additive_identity() {
 fn test_subtract_additive_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        assert_eq!(a, a - Fq::zero());
-        assert_eq!(a, Fq::zero() - -&a);
+        let a = BlsScalar::new_random(&mut rng);
+        assert_eq!(a, a - BlsScalar::zero());
+        assert_eq!(a, BlsScalar::zero() - -&a);
     }
 }
 
@@ -47,10 +47,10 @@ fn test_subtract_additive_identity() {
 fn test_additive_inverse() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
+        let a = BlsScalar::new_random(&mut rng);
         let a_neg = -&a;
-        assert_eq!(Fq::zero(), a + a_neg);
-        assert_eq!(Fq::zero(), a_neg + a);
+        assert_eq!(BlsScalar::zero(), a + a_neg);
+        assert_eq!(BlsScalar::zero(), a_neg + a);
     }
 }
 
@@ -58,8 +58,8 @@ fn test_additive_inverse() {
 fn test_additive_commutativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        let b = Fq::new_random(&mut rng);
+        let a = BlsScalar::new_random(&mut rng);
+        let b = BlsScalar::new_random(&mut rng);
         assert_eq!(a + b, b + a);
     }
 }
@@ -68,9 +68,9 @@ fn test_additive_commutativity() {
 fn test_multiplicative_associativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        let b = Fq::new_random(&mut rng);
-        let c = Fq::new_random(&mut rng);
+        let a = BlsScalar::new_random(&mut rng);
+        let b = BlsScalar::new_random(&mut rng);
+        let c = BlsScalar::new_random(&mut rng);
         assert_eq!((a * b) * c, a * (b * c))
     }
 }
@@ -79,9 +79,9 @@ fn test_multiplicative_associativity() {
 fn test_multiplicative_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        assert_eq!(a, a * Fq::one());
-        assert_eq!(a, Fq::one() * a);
+        let a = BlsScalar::new_random(&mut rng);
+        assert_eq!(a, a * BlsScalar::one());
+        assert_eq!(a, BlsScalar::one() * a);
     }
 }
 
@@ -89,13 +89,13 @@ fn test_multiplicative_identity() {
 fn test_multiplicative_inverse() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        if a == Fq::zero() {
+        let a = BlsScalar::new_random(&mut rng);
+        if a == BlsScalar::zero() {
             continue;
         }
         let a_inv = a.invert().unwrap();
-        assert_eq!(Fq::one(), a * a_inv);
-        assert_eq!(Fq::one(), a_inv * a);
+        assert_eq!(BlsScalar::one(), a * a_inv);
+        assert_eq!(BlsScalar::one(), a_inv * a);
     }
 }
 
@@ -103,8 +103,8 @@ fn test_multiplicative_inverse() {
 fn test_multiplicative_commutativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        let b = Fq::new_random(&mut rng);
+        let a = BlsScalar::new_random(&mut rng);
+        let b = BlsScalar::new_random(&mut rng);
         assert_eq!(a * b, b * a);
     }
 }
@@ -113,8 +113,8 @@ fn test_multiplicative_commutativity() {
 fn test_multiply_additive_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fq::new_random(&mut rng);
-        assert_eq!(Fq::zero(), Fq::zero() * a);
-        assert_eq!(Fq::zero(), a * Fq::zero());
+        let a = BlsScalar::new_random(&mut rng);
+        assert_eq!(BlsScalar::zero(), BlsScalar::zero() * a);
+        assert_eq!(BlsScalar::zero(), a * BlsScalar::zero());
     }
 }

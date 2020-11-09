@@ -10,7 +10,7 @@ homepage = "https://github.com/dusk-network/jubjub"
 license = "MIT/Apache-2.0"
 name = "dusk-jubjub"
 repository = "https://github.com/dusk-network/jubjub"
-version = "0.4.1"
+version = "0.5.0"
 keywords = ["cryptography", "jubjub", "zk-snarks", "ecc", "elliptic-curve"]
 categories =["algorithms", "cryptography", "science"]
 edition = "2018"
@@ -41,5 +41,5 @@ default-features = false
 
 [features]
 default = ["std"]
-std = ["dusk-bls12_381/default"]
+std = ["dusk-bls12_381/alloc"]
 canon = ["canonical", "canonical_derive", "dusk-bls12_381/canon"]

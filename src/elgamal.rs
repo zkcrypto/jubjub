@@ -1,4 +1,4 @@
-use crate::{AffinePoint, ExtendedPoint, Fr};
+use crate::{AffinePoint, ExtendedPoint, JubJubScalar};
 
 use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
@@ -8,16 +8,16 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 ///
 /// ```rust
 /// use dusk_jubjub::elgamal::ElgamalCipher;
-/// use dusk_jubjub::{Fr, GENERATOR_EXTENDED};
+/// use dusk_jubjub::{JubJubScalar, GENERATOR_EXTENDED};
 ///
 /// fn main() {
 ///     // Bob's (sender) secret and message
-///     let bob_secret = Fr::random(&mut rand::thread_rng());
-///     let message = Fr::random(&mut rand::thread_rng());
+///     let bob_secret = JubJubScalar::random(&mut rand::thread_rng());
+///     let message = JubJubScalar::random(&mut rand::thread_rng());
 ///     let message = GENERATOR_EXTENDED * message;
 ///
 ///     // Alice's (receiver) secret and public
-///     let alice_secret = Fr::random(&mut rand::thread_rng());
+///     let alice_secret = JubJubScalar::random(&mut rand::thread_rng());
 ///     let alice_public = GENERATOR_EXTENDED * alice_secret;
 ///
 ///     let cipher = ElgamalCipher::encrypt(
@@ -41,7 +41,7 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 ///
 /// 1. Obtain Alice’s authentic public key `A`.
 /// 2. Represent the message `M` as a point of JubJub defined such as `M = G ·m`
-/// where `m` is a scalar in `Fr`.
+/// where `m` is a scalar in `JubJubScalar`.
 /// 3. Compute `γ = G · b` and `δ = M + (A ·b)`.
 /// 4. Send the ciphertext `c = (γ; δ)` to Alice.
 ///
@@ -59,7 +59,7 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 /// The addition and subtraction are homomorphic with other [`ElgamalCipher`]
 /// structures.
 ///
-/// The multiplication is homomorphic with [`Fr`] scalars.
+/// The multiplication is homomorphic with [`JubJubScalar`] scalars.
 ///
 /// Being `E` the encrypt and `D` the decrypt functions, here follows an
 /// example: `D{E[x * (a + b)]} == D{x * [E(a) + E(b)]}`
@@ -89,7 +89,7 @@ impl ElgamalCipher {
     ///
     /// The decryption will expect the secret of `public`.
     pub fn encrypt(
-        secret: &Fr,
+        secret: &JubJubScalar,
         public: &ExtendedPoint,
         generator: &ExtendedPoint,
         message: &ExtendedPoint,
@@ -101,7 +101,7 @@ impl ElgamalCipher {
     }
 
     /// Perform the decryption with the provided secret.
-    pub fn decrypt(&self, secret: &Fr) -> ExtendedPoint {
+    pub fn decrypt(&self, secret: &JubJubScalar) -> ExtendedPoint {
         self.delta - self.gamma * secret
     }
 
@@ -192,30 +192,30 @@ impl SubAssign for ElgamalCipher {
     }
 }
 
-impl Mul<&Fr> for &ElgamalCipher {
+impl Mul<&JubJubScalar> for &ElgamalCipher {
     type Output = ElgamalCipher;
 
-    fn mul(self, rhs: &Fr) -> ElgamalCipher {
+    fn mul(self, rhs: &JubJubScalar) -> ElgamalCipher {
         ElgamalCipher::new(self.gamma * rhs, self.delta * rhs)
     }
 }
 
-impl Mul<Fr> for &ElgamalCipher {
+impl Mul<JubJubScalar> for &ElgamalCipher {
     type Output = ElgamalCipher;
 
-    fn mul(self, rhs: Fr) -> ElgamalCipher {
+    fn mul(self, rhs: JubJubScalar) -> ElgamalCipher {
         self * &rhs
     }
 }
 
-impl MulAssign<Fr> for ElgamalCipher {
-    fn mul_assign(&mut self, rhs: Fr) {
+impl MulAssign<JubJubScalar> for ElgamalCipher {
+    fn mul_assign(&mut self, rhs: JubJubScalar) {
         *self = &*self * &rhs;
     }
 }
 
-impl<'b> MulAssign<&'b Fr> for ElgamalCipher {
-    fn mul_assign(&mut self, rhs: &'b Fr) {
+impl<'b> MulAssign<&'b JubJubScalar> for ElgamalCipher {
+    fn mul_assign(&mut self, rhs: &'b JubJubScalar) {
         *self = &*self * rhs;
     }
 }
@@ -223,13 +223,13 @@ impl<'b> MulAssign<&'b Fr> for ElgamalCipher {
 #[cfg(test)]
 mod tests {
     use super::ElgamalCipher;
-    use crate::{ExtendedPoint, Fr, GENERATOR_EXTENDED};
+    use crate::{ExtendedPoint, JubJubScalar, GENERATOR_EXTENDED};
 
-    fn gen() -> (Fr, ExtendedPoint, Fr, ExtendedPoint) {
-        let a = Fr::random(&mut rand::thread_rng());
+    fn gen() -> (JubJubScalar, ExtendedPoint, JubJubScalar, ExtendedPoint) {
+        let a = JubJubScalar::random(&mut rand::thread_rng());
         let a_g = GENERATOR_EXTENDED * a;
 
-        let b = Fr::random(&mut rand::thread_rng());
+        let b = JubJubScalar::random(&mut rand::thread_rng());
         let b_g = GENERATOR_EXTENDED * b;
 
         (a, a_g, b, b_g)
@@ -239,7 +239,7 @@ mod tests {
     fn encrypt() {
         let (a, _, b, b_g) = gen();
 
-        let m = Fr::random(&mut rand::thread_rng());
+        let m = JubJubScalar::random(&mut rand::thread_rng());
         let m = GENERATOR_EXTENDED * m;
 
         let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);
@@ -252,12 +252,12 @@ mod tests {
     fn wrong_key() {
         let (a, _, b, b_g) = gen();
 
-        let m = Fr::random(&mut rand::thread_rng());
+        let m = JubJubScalar::random(&mut rand::thread_rng());
         let m = GENERATOR_EXTENDED * m;
 
         let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);
 
-        let wrong = b - Fr::one();
+        let wrong = b - JubJubScalar::one();
         let decrypt = cipher.decrypt(&wrong);
 
         assert_ne!(m, decrypt);
@@ -267,9 +267,9 @@ mod tests {
     fn homomorphic_add() {
         let (a, _, b, b_g) = gen();
 
-        let mut m = [Fr::zero(); 4];
+        let mut m = [JubJubScalar::zero(); 4];
         m.iter_mut()
-            .for_each(|x| *x = Fr::random(&mut rand::thread_rng()));
+            .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
 
         let mut m_g = [ExtendedPoint::default(); 4];
         m_g.iter_mut()
@@ -297,9 +297,9 @@ mod tests {
     fn homomorphic_sub() {
         let (a, _, b, b_g) = gen();
 
-        let mut m = [Fr::zero(); 4];
+        let mut m = [JubJubScalar::zero(); 4];
         m.iter_mut()
-            .for_each(|x| *x = Fr::random(&mut rand::thread_rng()));
+            .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
 
         let mut m_g = [ExtendedPoint::default(); 4];
         m_g.iter_mut()
@@ -327,9 +327,9 @@ mod tests {
     fn homomorphic_mul() {
         let (a, _, b, b_g) = gen();
 
-        let mut m = [Fr::zero(); 4];
+        let mut m = [JubJubScalar::zero(); 4];
         m.iter_mut()
-            .for_each(|x| *x = Fr::random(&mut rand::thread_rng()));
+            .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
 
         let mut m_g = [ExtendedPoint::default(); 4];
         m_g.iter_mut()
@@ -355,7 +355,7 @@ mod tests {
     fn to_bytes() {
         let (a, _, b, b_g) = gen();
 
-        let m = Fr::random(&mut rand::thread_rng());
+        let m = JubJubScalar::random(&mut rand::thread_rng());
         let m = GENERATOR_EXTENDED * m;
 
         let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);

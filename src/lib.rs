@@ -9,7 +9,7 @@
 //!   arithmetic
 //! * `AffineNielsPoint` / `ExtendedNielsPoint` which are pre-processed Jubjub
 //!   points
-//! * `Fq`, which is the base field of Jubjub
+//! * `BlsScalar`, which is the base field of Jubjub
 //! * `Fr`, which is the scalar field of Jubjub
 //! * `batch_normalize` for converting many `ExtendedPoint`s into `AffinePoint`s
 //!   efficiently.
@@ -52,8 +52,10 @@ mod fr;
 /// Implementation of ElGamal encryption scheme with JubJub
 pub mod elgamal;
 
-pub use dusk_bls12_381::Scalar as Fq;
-pub use fr::Fr;
+pub use dusk_bls12_381::BlsScalar;
+pub use fr::Fr as JubJubScalar;
+
+pub(crate) use fr::Fr;
 
 /// A better name than Fr.
 pub type Scalar = Fr;
@@ -68,8 +70,8 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "canon", derive(Canon))]
 pub struct AffinePoint {
-    x: Fq,
-    y: Fq,
+    x: BlsScalar,
+    y: BlsScalar,
 }
 
 impl Neg for AffinePoint {
@@ -101,8 +103,8 @@ impl PartialEq for AffinePoint {
 impl ConditionallySelectable for AffinePoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         AffinePoint {
-            x: Fq::conditional_select(&a.x, &b.x, choice),
-            y: Fq::conditional_select(&a.y, &b.y, choice),
+            x: BlsScalar::conditional_select(&a.x, &b.x, choice),
+            y: BlsScalar::conditional_select(&a.y, &b.y, choice),
         }
     }
 }
@@ -118,13 +120,13 @@ impl ConditionallySelectable for AffinePoint {
 ///     x = 0x3fd2814c43ac65a6f1fbf02d0fd6cce62e3ebb21fd6c54ed4df7b7ffec7beaca
 //      y = 0x0000000000000000000000000000000000000000000000000000000000000012
 pub const GENERATOR: AffinePoint = AffinePoint {
-    x: Fq::from_raw([
+    x: BlsScalar::from_raw([
         0x4df7b7ffec7beaca,
         0x2e3ebb21fd6c54ed,
         0xf1fbf02d0fd6cce6,
         0x3fd2814c43ac65a6,
     ]),
-    y: Fq::from_raw([
+    y: BlsScalar::from_raw([
         0x0000000000000012,
         000000000000000000,
         000000000000000000,
@@ -136,7 +138,7 @@ pub const GENERATOR: AffinePoint = AffinePoint {
 pub const GENERATOR_EXTENDED: ExtendedPoint = ExtendedPoint {
     x: GENERATOR.x,
     y: GENERATOR.y,
-    z: Fq::one(),
+    z: BlsScalar::one(),
     t1: GENERATOR.x,
     t2: GENERATOR.y,
 };
@@ -148,13 +150,13 @@ pub const GENERATOR_EXTENDED: ExtendedPoint = ExtendedPoint {
 ///     x = 0x5e67b8f316f414f7bd9514c773fd4456931e316a39fe4541921710179df76377
 //      y = 0x43d80eb3b2f3eb1b7b162dbeeb3b34fd9949ba0f82a5507a6705b707162e3ef8
 pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
-    x: Fq::from_raw([
+    x: BlsScalar::from_raw([
         0x921710179df76377,
         0x931e316a39fe4541,
         0xbd9514c773fd4456,
         0x5e67b8f316f414f7,
     ]),
-    y: Fq::from_raw([
+    y: BlsScalar::from_raw([
         0x6705b707162e3ef8,
         0x9949ba0f82a5507a,
         0x7b162dbeeb3b34fd,
@@ -166,7 +168,7 @@ pub const GENERATOR_NUMS: AffinePoint = AffinePoint {
 pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
     x: GENERATOR_NUMS.x,
     y: GENERATOR_NUMS.y,
-    z: Fq::one(),
+    z: BlsScalar::one(),
     t1: GENERATOR_NUMS.x,
     t2: GENERATOR_NUMS.y,
 };
@@ -191,11 +193,11 @@ pub const GENERATOR_NUMS_EXTENDED: ExtendedPoint = ExtendedPoint {
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "canon", derive(Canon))]
 pub struct ExtendedPoint {
-    x: Fq,
-    y: Fq,
-    z: Fq,
-    t1: Fq,
-    t2: Fq,
+    x: BlsScalar,
+    y: BlsScalar,
+    z: BlsScalar,
+    t1: BlsScalar,
+    t2: BlsScalar,
 }
 
 impl ConstantTimeEq for ExtendedPoint {
@@ -213,11 +215,11 @@ impl ConstantTimeEq for ExtendedPoint {
 impl ConditionallySelectable for ExtendedPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         ExtendedPoint {
-            x: Fq::conditional_select(&a.x, &b.x, choice),
-            y: Fq::conditional_select(&a.y, &b.y, choice),
-            z: Fq::conditional_select(&a.z, &b.z, choice),
-            t1: Fq::conditional_select(&a.t1, &b.t1, choice),
-            t2: Fq::conditional_select(&a.t2, &b.t2, choice),
+            x: BlsScalar::conditional_select(&a.x, &b.x, choice),
+            y: BlsScalar::conditional_select(&a.y, &b.y, choice),
+            z: BlsScalar::conditional_select(&a.z, &b.z, choice),
+            t1: BlsScalar::conditional_select(&a.t1, &b.t1, choice),
+            t2: BlsScalar::conditional_select(&a.t2, &b.t2, choice),
         }
     }
 }
@@ -253,7 +255,7 @@ impl From<AffinePoint> for ExtendedPoint {
         ExtendedPoint {
             x: affine.x,
             y: affine.y,
-            z: Fq::one(),
+            z: BlsScalar::one(),
             t1: affine.x,
             t2: affine.y,
         }
@@ -289,18 +291,18 @@ impl From<ExtendedPoint> for AffinePoint {
 /// [`ExtendedPoint`](crate::ExtendedPoint).
 #[derive(Clone, Copy, Debug)]
 pub struct AffineNielsPoint {
-    y_plus_x: Fq,
-    y_minus_x: Fq,
-    t2d: Fq,
+    y_plus_x: BlsScalar,
+    y_minus_x: BlsScalar,
+    t2d: BlsScalar,
 }
 
 impl AffineNielsPoint {
     /// Constructs this point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         AffineNielsPoint {
-            y_plus_x: Fq::one(),
-            y_minus_x: Fq::one(),
-            t2d: Fq::zero(),
+            y_plus_x: BlsScalar::one(),
+            y_minus_x: BlsScalar::one(),
+            t2d: BlsScalar::zero(),
         }
     }
 
@@ -351,13 +353,17 @@ impl_binops_multiplicative_mixed!(AffineNielsPoint, Fr, ExtendedPoint);
 impl ConditionallySelectable for AffineNielsPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         AffineNielsPoint {
-            y_plus_x: Fq::conditional_select(&a.y_plus_x, &b.y_plus_x, choice),
-            y_minus_x: Fq::conditional_select(
+            y_plus_x: BlsScalar::conditional_select(
+                &a.y_plus_x,
+                &b.y_plus_x,
+                choice,
+            ),
+            y_minus_x: BlsScalar::conditional_select(
                 &a.y_minus_x,
                 &b.y_minus_x,
                 choice,
             ),
-            t2d: Fq::conditional_select(&a.t2d, &b.t2d, choice),
+            t2d: BlsScalar::conditional_select(&a.t2d, &b.t2d, choice),
         }
     }
 }
@@ -366,23 +372,27 @@ impl ConditionallySelectable for AffineNielsPoint {
 /// in the form `(Y + X, Y - X, Z, T1 * T2 * 2d)`.
 #[derive(Clone, Copy, Debug)]
 pub struct ExtendedNielsPoint {
-    y_plus_x: Fq,
-    y_minus_x: Fq,
-    z: Fq,
-    t2d: Fq,
+    y_plus_x: BlsScalar,
+    y_minus_x: BlsScalar,
+    z: BlsScalar,
+    t2d: BlsScalar,
 }
 
 impl ConditionallySelectable for ExtendedNielsPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         ExtendedNielsPoint {
-            y_plus_x: Fq::conditional_select(&a.y_plus_x, &b.y_plus_x, choice),
-            y_minus_x: Fq::conditional_select(
+            y_plus_x: BlsScalar::conditional_select(
+                &a.y_plus_x,
+                &b.y_plus_x,
+                choice,
+            ),
+            y_minus_x: BlsScalar::conditional_select(
                 &a.y_minus_x,
                 &b.y_minus_x,
                 choice,
             ),
-            z: Fq::conditional_select(&a.z, &b.z, choice),
-            t2d: Fq::conditional_select(&a.t2d, &b.t2d, choice),
+            z: BlsScalar::conditional_select(&a.z, &b.z, choice),
+            t2d: BlsScalar::conditional_select(&a.t2d, &b.t2d, choice),
         }
     }
 }
@@ -391,10 +401,10 @@ impl ExtendedNielsPoint {
     /// Constructs this point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         ExtendedNielsPoint {
-            y_plus_x: Fq::one(),
-            y_minus_x: Fq::one(),
-            z: Fq::one(),
-            t2d: Fq::zero(),
+            y_plus_x: BlsScalar::one(),
+            y_minus_x: BlsScalar::one(),
+            z: BlsScalar::one(),
+            t2d: BlsScalar::zero(),
         }
     }
 
@@ -443,7 +453,7 @@ impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedNielsPoint {
 impl_binops_multiplicative_mixed!(ExtendedNielsPoint, Fr, ExtendedPoint);
 
 /// `d = -(10240/10241)`
-pub const EDWARDS_D: Fq = Fq::from_raw([
+pub const EDWARDS_D: BlsScalar = BlsScalar::from_raw([
     0x01065fd6d6343eb1,
     0x292d7f6d37579d26,
     0xf5fd9207e6bd7fd4,
@@ -451,7 +461,7 @@ pub const EDWARDS_D: Fq = Fq::from_raw([
 ]);
 
 /// `2*EDWARDS_D`
-pub const EDWARDS_D2: Fq = Fq::from_raw([
+pub const EDWARDS_D2: BlsScalar = BlsScalar::from_raw([
     0x020cbfadac687d62,
     0x525afeda6eaf3a4c,
     0xebfb240fcd7affa8,
@@ -462,8 +472,8 @@ impl AffinePoint {
     /// Constructs the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         AffinePoint {
-            x: Fq::zero(),
-            y: Fq::one(),
+            x: BlsScalar::zero(),
+            y: BlsScalar::one(),
         }
     }
 
@@ -516,7 +526,7 @@ impl AffinePoint {
         b[31] &= 0b0111_1111;
 
         // Interpret what remains as the y-coordinate
-        Fq::from_bytes(&b).and_then(|y| {
+        BlsScalar::from_bytes(&b).and_then(|y| {
             // -x^2 + y^2 = 1 + d.x^2.y^2
             // -x^2 = 1 + d.x^2.y^2 - y^2    (rearrange)
             // -x^2 - d.x^2.y^2 = 1 - y^2    (rearrange)
@@ -530,16 +540,17 @@ impl AffinePoint {
 
             let y2 = y.square();
 
-            ((y2 - Fq::one())
-                * ((Fq::one() + EDWARDS_D * &y2)
+            ((y2 - BlsScalar::one())
+                * ((BlsScalar::one() + EDWARDS_D * &y2)
                     .invert()
-                    .unwrap_or(Fq::zero())))
+                    .unwrap_or(BlsScalar::zero())))
             .sqrt()
             .and_then(|x| {
                 // Fix the sign of `x` if necessary
                 let flip_sign = Choice::from((x.to_bytes()[0] ^ sign) & 1);
                 let x_negated = -x;
-                let final_x = Fq::conditional_select(&x, &x_negated, flip_sign);
+                let final_x =
+                    BlsScalar::conditional_select(&x, &x_negated, flip_sign);
 
                 CtOption::new(AffinePoint { x: final_x, y }, Choice::from(1u8))
             })
@@ -547,12 +558,12 @@ impl AffinePoint {
     }
 
     /// Returns the `x`-coordinate of this point.
-    pub fn get_x(&self) -> Fq {
+    pub fn get_x(&self) -> BlsScalar {
         self.x
     }
 
     /// Returns the `y`-coordinate of this point.
-    pub fn get_y(&self) -> Fq {
+    pub fn get_y(&self) -> BlsScalar {
         self.y
     }
 
@@ -560,15 +571,15 @@ impl AffinePoint {
     /// for use in multiple additions.
     pub const fn to_niels(&self) -> AffineNielsPoint {
         AffineNielsPoint {
-            y_plus_x: Fq::add(&self.y, &self.x),
-            y_minus_x: Fq::sub(&self.y, &self.x),
-            t2d: Fq::mul(&Fq::mul(&self.x, &self.y), &EDWARDS_D2),
+            y_plus_x: BlsScalar::add(&self.y, &self.x),
+            y_minus_x: BlsScalar::sub(&self.y, &self.x),
+            t2d: BlsScalar::mul(&BlsScalar::mul(&self.x, &self.y), &EDWARDS_D2),
         }
     }
 
     /// Constructs an AffinePoint given `x` and `y` without checking
     /// that the point is on the curve.
-    pub const fn from_raw_unchecked(x: Fq, y: Fq) -> AffinePoint {
+    pub const fn from_raw_unchecked(x: BlsScalar, y: BlsScalar) -> AffinePoint {
         AffinePoint { x, y }
     }
 
@@ -580,44 +591,44 @@ impl AffinePoint {
         let x2 = self.x.square();
         let y2 = self.y.square();
 
-        &y2 - &x2 == Fq::one() + &EDWARDS_D * &x2 * &y2
+        &y2 - &x2 == BlsScalar::one() + &EDWARDS_D * &x2 * &y2
     }
 }
 
 impl ExtendedPoint {
     /// Returns the `x`-coordinate of this point.
-    pub fn get_x(&self) -> Fq {
+    pub fn get_x(&self) -> BlsScalar {
         self.x
     }
 
     /// Returns the `y`-coordinate of this point.
-    pub fn get_y(&self) -> Fq {
+    pub fn get_y(&self) -> BlsScalar {
         self.y
     }
 
     /// Returns the `z`-coordinate of this point.
-    pub fn get_z(&self) -> Fq {
+    pub fn get_z(&self) -> BlsScalar {
         self.z
     }
 
     /// Returns the `t1`-coordinate of this point.
-    pub fn get_t1(&self) -> Fq {
+    pub fn get_t1(&self) -> BlsScalar {
         self.t1
     }
 
     /// Returns the `t2`-coordinate of this point.
-    pub fn get_t2(&self) -> Fq {
+    pub fn get_t2(&self) -> BlsScalar {
         self.t2
     }
 
     /// Constructs an extended point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         ExtendedPoint {
-            x: Fq::zero(),
-            y: Fq::one(),
-            z: Fq::one(),
-            t1: Fq::zero(),
-            t2: Fq::zero(),
+            x: BlsScalar::zero(),
+            y: BlsScalar::one(),
+            z: BlsScalar::one(),
+            t1: BlsScalar::zero(),
+            t2: BlsScalar::zero(),
         }
     }
 
@@ -626,7 +637,7 @@ impl ExtendedPoint {
         // If this point is the identity, then
         //     x = 0 * z = 0
         // and y = 1 * z = z
-        self.x.ct_eq(&Fq::zero()) & self.y.ct_eq(&self.z)
+        self.x.ct_eq(&BlsScalar::zero()) & self.y.ct_eq(&self.z)
     }
 
     /// Determines if this point is of small order.
@@ -635,7 +646,7 @@ impl ExtendedPoint {
         // points are (0, 1) and (0, -1), and so we only need to check
         // that the x-coordinate of the result is zero to see if the
         // point is small order.
-        self.double().double().x.ct_eq(&Fq::zero())
+        self.double().double().x.ct_eq(&BlsScalar::zero())
     }
 
     /// Determines if this point is torsion free and so is contained
@@ -670,7 +681,7 @@ impl ExtendedPoint {
 
     /// Returns two scalars suitable for hashing that represent the
     /// Extended Point.
-    pub fn to_hash_inputs(&self) -> [Fq; 2] {
+    pub fn to_hash_inputs(&self) -> [BlsScalar; 2] {
         // The same AffinePoint can have different ExtendedPoint
         // representations, therefore we convert from Extended to Affine
         // before hashing, to ensure deterministic result
@@ -787,7 +798,7 @@ impl ExtendedPoint {
     fn is_on_curve_vartime(&self) -> bool {
         let affine = AffinePoint::from(*self);
 
-        self.z != Fq::zero()
+        self.z != BlsScalar::zero()
             && affine.is_on_curve_vartime()
             && (affine.x * affine.y * self.z == self.t1 * self.t2)
     }
@@ -957,10 +968,10 @@ impl_binops_additive!(ExtendedPoint, AffinePoint);
 /// of the curve. This is not exposed in the API because it is
 /// an implementation detail.
 struct CompletedPoint {
-    x: Fq,
-    y: Fq,
-    z: Fq,
-    t: Fq,
+    x: BlsScalar,
+    y: BlsScalar,
+    z: BlsScalar,
+    t: BlsScalar,
 }
 
 impl CompletedPoint {
@@ -1007,7 +1018,7 @@ impl Default for ExtendedPoint {
 pub fn batch_normalize<'a>(
     y: &'a mut [ExtendedPoint],
 ) -> impl Iterator<Item = AffinePoint> + 'a {
-    let mut acc = Fq::one();
+    let mut acc = BlsScalar::one();
     for p in y.iter_mut() {
         // We use the `t1` field of `ExtendedPoint` to store the product
         // of previous z-coordinates seen.
@@ -1030,7 +1041,7 @@ pub fn batch_normalize<'a>(
         // Set the coordinates to the correct value
         q.x *= &tmp; // Multiply by 1/z
         q.y *= &tmp; // Multiply by 1/z
-        q.z = Fq::one(); // z-coordinate is now one
+        q.z = BlsScalar::one(); // z-coordinate is now one
         q.t1 = q.x;
         q.t2 = q.y;
 
@@ -1134,13 +1145,13 @@ fn test_extended_niels_point_identity() {
 #[test]
 fn test_assoc() {
     let p = ExtendedPoint::from(AffinePoint {
-        x: Fq::from_raw([
+        x: BlsScalar::from_raw([
             0x81c571e5d883cfb0,
             0x049f7a686f147029,
             0xf539c860bc3ea21f,
             0x4284715b7ccc8162,
         ]),
-        y: Fq::from_raw([
+        y: BlsScalar::from_raw([
             0xbf096275684bb8ca,
             0xc7ba245890af256d,
             0x59119f3e86380eb0,
@@ -1159,13 +1170,13 @@ fn test_assoc() {
 #[test]
 fn test_batch_normalize() {
     let mut p = ExtendedPoint::from(AffinePoint {
-        x: Fq::from_raw([
+        x: BlsScalar::from_raw([
             0x81c571e5d883cfb0,
             0x049f7a686f147029,
             0xf539c860bc3ea21f,
             0x4284715b7ccc8162,
         ]),
-        y: Fq::from_raw([
+        y: BlsScalar::from_raw([
             0xbf096275684bb8ca,
             0xc7ba245890af256d,
             0x59119f3e86380eb0,
@@ -1202,25 +1213,25 @@ fn test_batch_normalize() {
 
 #[cfg(test)]
 const FULL_GENERATOR: AffinePoint = AffinePoint::from_raw_unchecked(
-    Fq::from_raw([
+    BlsScalar::from_raw([
         0xe4b3d35df1a7adfe,
         0xcaf55d1b29bf81af,
         0x8b0f03ddd60a8187,
         0x62edcbb8bf3787c8,
     ]),
-    Fq::from_raw([0xb, 0x0, 0x0, 0x0]),
+    BlsScalar::from_raw([0xb, 0x0, 0x0, 0x0]),
 );
 
 #[cfg(test)]
 const EIGHT_TORSION: [AffinePoint; 8] = [
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0xd92e6a7927200d43,
             0x7aa41ac43dae8582,
             0xeaaae086a16618d1,
             0x71d4df38ba9e7973,
         ]),
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0xff0d2068eff496dd,
             0x9106ee90f384a4a1,
             0x16a13035ad4d7266,
@@ -1228,22 +1239,22 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0xfffeffff00000001,
             0x67baa40089fb5bfe,
             0xa5e80b39939ed334,
             0x73eda753299d7d47,
         ]),
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
+        BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0xd92e6a7927200d43,
             0x7aa41ac43dae8582,
             0xeaaae086a16618d1,
             0x71d4df38ba9e7973,
         ]),
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0xf2df96100b6924,
             0xc2b6b5720c79b75d,
             0x1c98a7d25c54659e,
@@ -1251,8 +1262,8 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
-        Fq::from_raw([
+        BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
+        BlsScalar::from_raw([
             0xffffffff00000000,
             0x53bda402fffe5bfe,
             0x3339d80809a1d805,
@@ -1260,13 +1271,13 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0x26d19585d8dff2be,
             0xd919893ec24fd67c,
             0x488ef781683bbf33,
             0x218c81a6eff03d4,
         ]),
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0xf2df96100b6924,
             0xc2b6b5720c79b75d,
             0x1c98a7d25c54659e,
@@ -1274,22 +1285,22 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0x1000000000000,
             0xec03000276030000,
             0x8d51ccce760304d0,
             0x0,
         ]),
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
+        BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0x26d19585d8dff2be,
             0xd919893ec24fd67c,
             0x488ef781683bbf33,
             0x218c81a6eff03d4,
         ]),
-        Fq::from_raw([
+        BlsScalar::from_raw([
             0xff0d2068eff496dd,
             0x9106ee90f384a4a1,
             0x16a13035ad4d7266,
@@ -1297,8 +1308,8 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
-        Fq::from_raw([0x1, 0x0, 0x0, 0x0]),
+        BlsScalar::from_raw([0x0, 0x0, 0x0, 0x0]),
+        BlsScalar::from_raw([0x1, 0x0, 0x0, 0x0]),
     ),
 ];
 
@@ -1426,13 +1437,13 @@ fn test_mul_consistency() {
     ]);
     assert_eq!(a * b, c);
     let p = ExtendedPoint::from(AffinePoint {
-        x: Fq::from_raw([
+        x: BlsScalar::from_raw([
             0x81c571e5d883cfb0,
             0x049f7a686f147029,
             0xf539c860bc3ea21f,
             0x4284715b7ccc8162,
         ]),
-        y: Fq::from_raw([
+        y: BlsScalar::from_raw([
             0xbf096275684bb8ca,
             0xc7ba245890af256d,
             0x59119f3e86380eb0,
