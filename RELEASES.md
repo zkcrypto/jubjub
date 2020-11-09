@@ -1,3 +1,8 @@
+# 0.4.1
+### Change
+- Update `dusk-bls12_381` to `0.3.0`.
+- Create no-std compatibility via feature.
+
 # 0.4.0
 ### Change
 - Derive `Canon` for `ExtendedPoint`.
