@@ -16,7 +16,7 @@ use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::util::{adc, mac, sbb};
-use crate::Fq;
+use crate::BlsScalar;
 
 /// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub
 /// elliptic curve construction.
@@ -54,9 +54,9 @@ impl From<i8> for Fr {
     }
 }
 
-impl From<Fr> for Fq {
-    fn from(scalar: Fr) -> Fq {
-        let bls_scalar = Fq::from_bytes(&scalar.to_bytes());
+impl From<Fr> for BlsScalar {
+    fn from(scalar: Fr) -> BlsScalar {
+        let bls_scalar = BlsScalar::from_bytes(&scalar.to_bytes());
 
         // The order of a JubJub's Scalar field is shorter than a BLS Scalar,
         // so convert any jubjub scalar to a BLS' Scalar should always be

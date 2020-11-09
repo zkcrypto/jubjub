@@ -1,3 +1,11 @@
+# 0.5.0
+### Change
+- Update `dusk-bls12_381` to `0.3.0`.
+- Export `Fr` as `JubJubScalar`
+- Create no-std compatibility via feature.
+- Rename `AffinePoint` to `JubJubAffine`
+- Rename `ExtendedPoint` to `JubJubExtended`
+
 # 0.4.0
 ### Change
 - Derive `Canon` for `ExtendedPoint`.

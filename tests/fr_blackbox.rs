@@ -2,7 +2,7 @@ mod common;
 
 use core::ops::Mul;
 
-use crate::Fq;
+use crate::BlsScalar;
 use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
 use dusk_jubjub::*;
 
@@ -10,8 +10,11 @@ use dusk_jubjub::*;
 fn test_to_and_from_bytes() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        assert_eq!(a, Fr::from_bytes(&Fr::to_bytes(&a)).unwrap());
+        let a = JubJubScalar::new_random(&mut rng);
+        assert_eq!(
+            a,
+            JubJubScalar::from_bytes(&JubJubScalar::to_bytes(&a)).unwrap()
+        );
     }
 }
 
@@ -19,9 +22,9 @@ fn test_to_and_from_bytes() {
 fn test_additive_associativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        let b = Fr::new_random(&mut rng);
-        let c = Fr::new_random(&mut rng);
+        let a = JubJubScalar::new_random(&mut rng);
+        let b = JubJubScalar::new_random(&mut rng);
+        let c = JubJubScalar::new_random(&mut rng);
         assert_eq!((a + b) + c, a + (b + c))
     }
 }
@@ -30,9 +33,9 @@ fn test_additive_associativity() {
 fn test_additive_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        assert_eq!(a, a + Fr::zero());
-        assert_eq!(a, Fr::zero() + a);
+        let a = JubJubScalar::new_random(&mut rng);
+        assert_eq!(a, a + JubJubScalar::zero());
+        assert_eq!(a, JubJubScalar::zero() + a);
     }
 }
 
@@ -40,9 +43,9 @@ fn test_additive_identity() {
 fn test_subtract_additive_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        assert_eq!(a, a - Fr::zero());
-        assert_eq!(a, Fr::zero() - -&a);
+        let a = JubJubScalar::new_random(&mut rng);
+        assert_eq!(a, a - JubJubScalar::zero());
+        assert_eq!(a, JubJubScalar::zero() - -&a);
     }
 }
 
@@ -50,10 +53,10 @@ fn test_subtract_additive_identity() {
 fn test_additive_inverse() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
+        let a = JubJubScalar::new_random(&mut rng);
         let a_neg = -&a;
-        assert_eq!(Fr::zero(), a + a_neg);
-        assert_eq!(Fr::zero(), a_neg + a);
+        assert_eq!(JubJubScalar::zero(), a + a_neg);
+        assert_eq!(JubJubScalar::zero(), a_neg + a);
     }
 }
 
@@ -61,8 +64,8 @@ fn test_additive_inverse() {
 fn test_additive_commutativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        let b = Fr::new_random(&mut rng);
+        let a = JubJubScalar::new_random(&mut rng);
+        let b = JubJubScalar::new_random(&mut rng);
         assert_eq!(a + b, b + a);
     }
 }
@@ -71,9 +74,9 @@ fn test_additive_commutativity() {
 fn test_multiplicative_associativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        let b = Fr::new_random(&mut rng);
-        let c = Fr::new_random(&mut rng);
+        let a = JubJubScalar::new_random(&mut rng);
+        let b = JubJubScalar::new_random(&mut rng);
+        let c = JubJubScalar::new_random(&mut rng);
         assert_eq!((a * b) * c, a * (b * c))
     }
 }
@@ -82,9 +85,9 @@ fn test_multiplicative_associativity() {
 fn test_multiplicative_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        assert_eq!(a, a * Fr::one());
-        assert_eq!(a, Fr::one() * a);
+        let a = JubJubScalar::new_random(&mut rng);
+        assert_eq!(a, a * JubJubScalar::one());
+        assert_eq!(a, JubJubScalar::one() * a);
     }
 }
 
@@ -92,13 +95,13 @@ fn test_multiplicative_identity() {
 fn test_multiplicative_inverse() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        if a == Fr::zero() {
+        let a = JubJubScalar::new_random(&mut rng);
+        if a == JubJubScalar::zero() {
             continue;
         }
         let a_inv = a.invert().unwrap();
-        assert_eq!(Fr::one(), a * a_inv);
-        assert_eq!(Fr::one(), a_inv * a);
+        assert_eq!(JubJubScalar::one(), a * a_inv);
+        assert_eq!(JubJubScalar::one(), a_inv * a);
     }
 }
 
@@ -106,8 +109,8 @@ fn test_multiplicative_inverse() {
 fn test_multiplicative_commutativity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        let b = Fr::new_random(&mut rng);
+        let a = JubJubScalar::new_random(&mut rng);
+        let b = JubJubScalar::new_random(&mut rng);
         assert_eq!(a * b, b * a);
     }
 }
@@ -116,19 +119,19 @@ fn test_multiplicative_commutativity() {
 fn test_multiply_additive_identity() {
     let mut rng = new_rng();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        assert_eq!(Fr::zero(), Fr::zero() * a);
-        assert_eq!(Fr::zero(), a * Fr::zero());
+        let a = JubJubScalar::new_random(&mut rng);
+        assert_eq!(JubJubScalar::zero(), JubJubScalar::zero() * a);
+        assert_eq!(JubJubScalar::zero(), a * JubJubScalar::zero());
     }
 }
 
 #[test]
 fn test_dhke() {
     let mut rng = new_rng();
-    let g: ExtendedPoint = GENERATOR.into();
+    let g: JubJubExtended = GENERATOR.into();
     for _ in 0..NUM_BLACK_BOX_CHECKS {
-        let a = Fr::new_random(&mut rng);
-        let b = Fr::new_random(&mut rng);
+        let a = JubJubScalar::new_random(&mut rng);
+        let b = JubJubScalar::new_random(&mut rng);
 
         let a_g = g.mul(&a);
         let b_g = g.mul(&b);
@@ -140,18 +143,18 @@ fn test_dhke() {
 #[test]
 fn test_from_jubjub_to_bls_scalar() {
     assert_eq!(
-        Fq::zero(),
-        Fq::from(Fr::zero()),
+        BlsScalar::zero(),
+        BlsScalar::from(JubJubScalar::zero()),
         "Scalar conversion from JubJub's zero to BLS' zero"
     );
     assert_eq!(
-        Fq::one(),
-        Fq::from(Fr::one()),
+        BlsScalar::one(),
+        BlsScalar::from(JubJubScalar::one()),
         "Scalar conversion from JubJub's one to BLS' one"
     );
 
-    let jubjub_scalar = -Fr::one();
-    let bls_scalar = Fq::from(jubjub_scalar);
+    let jubjub_scalar = -JubJubScalar::one();
+    let bls_scalar = BlsScalar::from(jubjub_scalar);
 
     assert_eq!(
         jubjub_scalar.to_bytes(),
@@ -159,12 +162,12 @@ fn test_from_jubjub_to_bls_scalar() {
         "Scalar conversion from JubJub's maximum number to BLS"
     );
 
-    let bls_scalar = Fq::from(77u64);
-    let jubjub_scalar = Fr::from(77u64);
+    let bls_scalar = BlsScalar::from(77u64);
+    let jubjub_scalar = JubJubScalar::from(77u64);
 
     assert_eq!(
         bls_scalar,
-        Fq::from(jubjub_scalar),
+        BlsScalar::from(jubjub_scalar),
         "Scalar conversion from an arbitrary JubJub's number to BLS"
     );
 }
