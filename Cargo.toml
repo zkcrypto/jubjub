@@ -32,7 +32,7 @@ default-features = false
 version = "0.7"
 
 [dependencies.rand_core]
-version = "0.5"
+version = "0.6"
 default-features = false
 
 [dev-dependencies.rand_xorshift]
