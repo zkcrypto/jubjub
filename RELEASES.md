@@ -1,3 +1,7 @@
+# 0.5.1
+### Change
+- Update `dusk-bls12_381` to `0.4.0`.
+
 # 0.5.0
 ### Change
 - Update `dusk-bls12_381` to `0.3.0`.
