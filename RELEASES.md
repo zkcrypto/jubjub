@@ -1,4 +1,4 @@
-# 0.5.1
+# 0.6.0
 ### Change
 - Update `dusk-bls12_381` to `0.4.0`.
 - Update `rand_core` to `0.6`.
