@@ -11,6 +11,7 @@ use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use core::ops::{Index, IndexMut};
+use dusk_bytes::{Error as BytesError, Serializable};
 use rand_core::{CryptoRng, RngCore};
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -62,7 +63,7 @@ impl From<Fr> for BlsScalar {
         // so convert any jubjub scalar to a BLS' Scalar should always be
         // safe.
         assert!(
-            bool::from(bls_scalar.is_some()),
+            bls_scalar.is_ok(),
             "Failed to convert a Scalar from JubJub to BLS"
         );
 
@@ -220,6 +221,61 @@ impl Default for Fr {
     }
 }
 
+impl Serializable<32> for Fr {
+    type Error = BytesError;
+
+    /// Converts an element of `Fr` into a byte representation in
+    /// little-endian byte order.
+    fn to_bytes(&self) -> [u8; Self::SIZE] {
+        // Turn into canonical form by computing
+        // (a.R) / R = a
+        let tmp = Fr::montgomery_reduce(
+            self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0,
+        );
+
+        let mut res = [0; Self::SIZE];
+        res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
+        res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
+        res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
+        res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
+
+        res
+    }
+
+    /// Attempts to convert a little-endian byte representation of
+    /// a field element into an element of `Fr`, failing if the input
+    /// is not canonical (is not smaller than r).
+    fn from_bytes(bytes: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
+        let mut tmp = Fr([0, 0, 0, 0]);
+
+        tmp.0[0] = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
+        tmp.0[1] = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+        tmp.0[2] = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
+        tmp.0[3] = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
+
+        // Try to subtract the modulus
+        let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
+        let (_, borrow) = sbb(tmp.0[1], MODULUS.0[1], borrow);
+        let (_, borrow) = sbb(tmp.0[2], MODULUS.0[2], borrow);
+        let (_, borrow) = sbb(tmp.0[3], MODULUS.0[3], borrow);
+
+        // If the element is smaller than MODULUS then the
+        // subtraction will underflow, producing a borrow value
+        // of 0xffff...ffff. Otherwise, it'll be zero.
+        let is_some = (borrow as u8) & 1;
+
+        if is_some == 0 {
+            return Err(BytesError::InvalidData);
+        }
+
+        // Convert to Montgomery form by computing
+        // (a.R^0 * R^2) / R = a.R
+        tmp *= &R2;
+
+        Ok(tmp)
+    }
+}
+
 impl Fr {
     /// Returns zero, the additive identity.
     #[inline]
@@ -264,53 +320,6 @@ impl Fr {
                 t = t2;
             }
         }
-    }
-
-    /// Attempts to convert a little-endian byte representation of
-    /// a field element into an element of `Fr`, failing if the input
-    /// is not canonical (is not smaller than r).
-    pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Fr> {
-        let mut tmp = Fr([0, 0, 0, 0]);
-
-        tmp.0[0] = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
-        tmp.0[1] = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
-        tmp.0[2] = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
-        tmp.0[3] = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
-
-        // Try to subtract the modulus
-        let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
-        let (_, borrow) = sbb(tmp.0[1], MODULUS.0[1], borrow);
-        let (_, borrow) = sbb(tmp.0[2], MODULUS.0[2], borrow);
-        let (_, borrow) = sbb(tmp.0[3], MODULUS.0[3], borrow);
-
-        // If the element is smaller than MODULUS then the
-        // subtraction will underflow, producing a borrow value
-        // of 0xffff...ffff. Otherwise, it'll be zero.
-        let is_some = (borrow as u8) & 1;
-
-        // Convert to Montgomery form by computing
-        // (a.R^0 * R^2) / R = a.R
-        tmp *= &R2;
-
-        CtOption::new(tmp, Choice::from(is_some))
-    }
-
-    /// Converts an element of `Fr` into a byte representation in
-    /// little-endian byte order.
-    pub fn to_bytes(&self) -> [u8; 32] {
-        // Turn into canonical form by computing
-        // (a.R) / R = a
-        let tmp = Fr::montgomery_reduce(
-            self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0,
-        );
-
-        let mut res = [0; 32];
-        res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
-        res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
-        res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
-        res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
-
-        res
     }
 
     /// Converts a 512-bit little endian integer into
@@ -753,8 +762,8 @@ impl Fr {
     }
 }
 
-impl<'a> From<&'a Fr> for [u8; 32] {
-    fn from(value: &'a Fr) -> [u8; 32] {
+impl<'a> From<&'a Fr> for [u8; Fr::SIZE] {
+    fn from(value: &'a Fr) -> [u8; Fr::SIZE] {
         value.to_bytes()
     }
 }
@@ -868,62 +877,37 @@ fn test_from_bytes() {
     );
 
     // -1 should work
-    assert!(
-        Fr::from_bytes(&[
-            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
-            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
-            125, 14
-        ])
-        .is_some()
-        .unwrap_u8()
-            == 1
-    );
+    assert!(Fr::from_bytes(&[
+        182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
+        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
+    ])
+    .is_ok());
 
     // modulus is invalid
-    assert!(
-        Fr::from_bytes(&[
-            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
-            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
-            125, 14
-        ])
-        .is_none()
-        .unwrap_u8()
-            == 1
-    );
+    assert!(Fr::from_bytes(&[
+        183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
+        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
+    ])
+    .is_err());
 
     // Anything larger than the modulus is invalid
-    assert!(
-        Fr::from_bytes(&[
-            184, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
-            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
-            125, 14
-        ])
-        .is_none()
-        .unwrap_u8()
-            == 1
-    );
+    assert!(Fr::from_bytes(&[
+        184, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
+        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
+    ])
+    .is_err());
 
-    assert!(
-        Fr::from_bytes(&[
-            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
-            104, 166, 0, 59, 52, 1, 1, 59, 104, 6, 169, 175, 51, 101, 234, 180,
-            125, 14
-        ])
-        .is_none()
-        .unwrap_u8()
-            == 1
-    );
+    assert!(Fr::from_bytes(&[
+        183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
+        166, 0, 59, 52, 1, 1, 59, 104, 6, 169, 175, 51, 101, 234, 180, 125, 14
+    ])
+    .is_err());
 
-    assert!(
-        Fr::from_bytes(&[
-            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
-            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
-            125, 15
-        ])
-        .is_none()
-        .unwrap_u8()
-            == 1
-    );
+    assert!(Fr::from_bytes(&[
+        183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
+        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 15
+    ])
+    .is_err());
 }
 
 #[test]

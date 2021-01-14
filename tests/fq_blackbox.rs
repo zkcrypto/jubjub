@@ -1,6 +1,7 @@
 mod common;
 
 use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
+use dusk_bytes::Serializable;
 use dusk_jubjub::*;
 
 #[test]

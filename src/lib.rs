@@ -43,6 +43,7 @@ use canonical::Canon;
 #[cfg(feature = "canon")]
 use canonical_derive::Canon;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use dusk_bytes::{Error as BytesError, Serializable};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[macro_use]
@@ -468,6 +469,69 @@ pub const EDWARDS_D2: BlsScalar = BlsScalar::from_raw([
     0x552631ce97f45691,
 ]);
 
+impl Serializable<32> for JubJubAffine {
+    type Error = BytesError;
+
+    /// Converts this element into its byte representation.
+    fn to_bytes(&self) -> [u8; Self::SIZE] {
+        let mut tmp = self.y.to_bytes();
+        let x = self.x.to_bytes();
+
+        // Encode the sign of the x-coordinate in the most
+        // significant bit.
+        tmp[31] |= x[0] << 7;
+
+        tmp
+    }
+
+    /// Attempts to interpret a byte representation of an
+    /// affine point, failing if the element is not on
+    /// the curve or non-canonical.
+    fn from_bytes(b: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
+        let mut b = b.clone();
+
+        // Grab the sign bit from the representation
+        let sign = b[31] >> 7;
+
+        // Mask away the sign bit
+        b[31] &= 0b0111_1111;
+
+        // Interpret what remains as the y-coordinate
+        let y = BlsScalar::from_bytes(&b)?;
+
+        // -x^2 + y^2 = 1 + d.x^2.y^2
+        // -x^2 = 1 + d.x^2.y^2 - y^2    (rearrange)
+        // -x^2 - d.x^2.y^2 = 1 - y^2    (rearrange)
+        // x^2 + d.x^2.y^2 = y^2 - 1     (flip signs)
+        // x^2 (1 + d.y^2) = y^2 - 1     (factor)
+        // x^2 = (y^2 - 1) / (1 + d.y^2) (isolate x^2)
+        // We know that (1 + d.y^2) is nonzero for all y:
+        //   (1 + d.y^2) = 0
+        //   d.y^2 = -1
+        //   y^2 = -(1 / d)   No solutions, as -(1 / d) is not a square
+
+        let y2 = y.square();
+
+        Option::from(
+            ((y2 - BlsScalar::one())
+                * ((BlsScalar::one() + EDWARDS_D * &y2)
+                    .invert()
+                    .unwrap_or(BlsScalar::zero())))
+            .sqrt()
+            .and_then(|x| {
+                // Fix the sign of `x` if necessary
+                let flip_sign = Choice::from((x.to_bytes()[0] ^ sign) & 1);
+                let x_negated = -x;
+                let final_x =
+                    BlsScalar::conditional_select(&x, &x_negated, flip_sign);
+
+                CtOption::new(JubJubAffine { x: final_x, y }, Choice::from(1u8))
+            }),
+        )
+        .ok_or(BytesError::InvalidData)
+    }
+}
+
 impl JubJubAffine {
     /// Constructs the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
@@ -501,60 +565,6 @@ impl JubJubAffine {
     pub fn is_prime_order(&self) -> Choice {
         let extended = JubJubExtended::from(*self);
         extended.is_torsion_free() & (!extended.is_identity())
-    }
-
-    /// Converts this element into its byte representation.
-    pub fn to_bytes(&self) -> [u8; 32] {
-        let mut tmp = self.y.to_bytes();
-        let x = self.x.to_bytes();
-
-        // Encode the sign of the x-coordinate in the most
-        // significant bit.
-        tmp[31] |= x[0] << 7;
-
-        tmp
-    }
-
-    /// Attempts to interpret a byte representation of an
-    /// affine point, failing if the element is not on
-    /// the curve or non-canonical.
-    pub fn from_bytes(mut b: [u8; 32]) -> CtOption<Self> {
-        // Grab the sign bit from the representation
-        let sign = b[31] >> 7;
-
-        // Mask away the sign bit
-        b[31] &= 0b0111_1111;
-
-        // Interpret what remains as the y-coordinate
-        BlsScalar::from_bytes(&b).and_then(|y| {
-            // -x^2 + y^2 = 1 + d.x^2.y^2
-            // -x^2 = 1 + d.x^2.y^2 - y^2    (rearrange)
-            // -x^2 - d.x^2.y^2 = 1 - y^2    (rearrange)
-            // x^2 + d.x^2.y^2 = y^2 - 1     (flip signs)
-            // x^2 (1 + d.y^2) = y^2 - 1     (factor)
-            // x^2 = (y^2 - 1) / (1 + d.y^2) (isolate x^2)
-            // We know that (1 + d.y^2) is nonzero for all y:
-            //   (1 + d.y^2) = 0
-            //   d.y^2 = -1
-            //   y^2 = -(1 / d)   No solutions, as -(1 / d) is not a square
-
-            let y2 = y.square();
-
-            ((y2 - BlsScalar::one())
-                * ((BlsScalar::one() + EDWARDS_D * &y2)
-                    .invert()
-                    .unwrap_or(BlsScalar::zero())))
-            .sqrt()
-            .and_then(|x| {
-                // Fix the sign of `x` if necessary
-                let flip_sign = Choice::from((x.to_bytes()[0] ^ sign) & 1);
-                let x_negated = -x;
-                let final_x =
-                    BlsScalar::conditional_select(&x, &x_negated, flip_sign);
-
-                CtOption::new(JubJubAffine { x: final_x, y }, Choice::from(1u8))
-            })
-        })
     }
 
     /// Returns the `x`-coordinate of this point.
@@ -1339,8 +1349,8 @@ fn find_eight_torsion() {
 fn find_curve_generator() {
     let mut trial_bytes = [0; 32];
     for _ in 0..255 {
-        let a = JubJubAffine::from_bytes(trial_bytes);
-        if a.is_some().unwrap_u8() == 1 {
+        let a = JubJubAffine::from_bytes(&trial_bytes);
+        if a.is_ok() {
             let a = a.unwrap();
             assert!(a.is_on_curve_vartime());
             let b = JubJubExtended::from(a);
@@ -1386,14 +1396,16 @@ fn second_gen_nums() {
         hasher.update(counter.to_le_bytes());
         let res = hasher.finalize();
         array.copy_from_slice(&res[0..32]);
-        if JubJubAffine::from_bytes(array.clone()).is_some().into()
-            && JubJubAffine::from_bytes(array)
+        if JubJubAffine::from_bytes(&array).is_ok()
+            && JubJubAffine::from_bytes(&array)
                 .unwrap()
                 .is_prime_order()
                 .unwrap_u8()
                 == 1
         {
-            assert!(GENERATOR_NUMS == JubJubAffine::from_bytes(array).unwrap());
+            assert!(
+                GENERATOR_NUMS == JubJubAffine::from_bytes(&array).unwrap()
+            );
         }
         counter += 1;
     }
@@ -1560,7 +1572,7 @@ fn test_serialization_consistency() {
         assert!(p.is_on_curve_vartime());
         let affine = JubJubAffine::from(p);
         let serialized = affine.to_bytes();
-        let deserialized = JubJubAffine::from_bytes(serialized).unwrap();
+        let deserialized = JubJubAffine::from_bytes(&serialized).unwrap();
         assert_eq!(affine, deserialized);
         assert_eq!(expected_serialized, serialized);
         p = p + &gen;

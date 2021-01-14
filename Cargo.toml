@@ -10,7 +10,7 @@ homepage = "https://github.com/dusk-network/jubjub"
 license = "MIT/Apache-2.0"
 name = "dusk-jubjub"
 repository = "https://github.com/dusk-network/jubjub"
-version = "0.6.0"
+version = "0.7.0"
 keywords = ["cryptography", "jubjub", "zk-snarks", "ecc", "elliptic-curve"]
 categories =["algorithms", "cryptography", "science"]
 edition = "2018"
@@ -19,21 +19,19 @@ exclude = [".github/workflows/ci.yml", "github/workflows/rust.yml",
 ]
 
 [dependencies]
-dusk-bls12_381 = {version="0.4", default-features=false}
+dusk-bls12_381 = "0.5"
 blake2 = "0.9.0"
 canonical = {version = "0.4", optional = true}
 canonical_derive = {version = "0.4", optional = true}
 subtle = {version="^2.3", default-features = false}
-rand_core = {version = "0.6", default-features=false}
+rand_core = {version = "0.5", default-features=false}
+dusk-bytes = "0.1"
 
 [dev-dependencies]
-rand = "0.8"
-rand_xorshift = {version="0.3", default-features = false}
+rand = "0.7"
+rand_xorshift = {version="0.2", default-features = false}
 
 [features]
 default = ["std"]
 std = ["dusk-bls12_381/alloc"]
 canon = ["canonical", "canonical_derive", "dusk-bls12_381/canon"]
-
-[patch.crates-io]
-dusk-bls12_381 = {git="https://github.com/dusk-network/bls12_381"}
