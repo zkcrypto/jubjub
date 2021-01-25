@@ -1,3 +1,13 @@
+# 0.7.0
+### Add
+- Add `Serializable` trait to all structures
+
+### Remove
+- Remove manual implementation of `from_bytes` and `to_bytes` from all structures
+
+### Change
+- Change return value of `from_bytes` from  `Option` / `CtOption` into `Result<Self, Error>`
+
 # 0.6.0
 ### Change
 - Update `dusk-bls12_381` to `0.4.0`.

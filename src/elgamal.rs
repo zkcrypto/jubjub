@@ -1,6 +1,7 @@
 use crate::{JubJubAffine, JubJubExtended, JubJubScalar};
 
 use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
+use dusk_bytes::{DeserializableSlice, Error as BytesError, Serializable};
 
 /// Tuple for assymetric encryption using ElGamal algorithm.
 ///
@@ -69,6 +70,34 @@ pub struct ElgamalCipher {
     delta: JubJubExtended,
 }
 
+impl Serializable<64> for ElgamalCipher {
+    type Error = BytesError;
+
+    /// Serialize the cipher into bytes
+    fn to_bytes(&self) -> [u8; Self::SIZE] {
+        let gamma: JubJubAffine = self.gamma.into();
+        let gamma = gamma.to_bytes();
+
+        let delta: JubJubAffine = self.delta.into();
+        let delta = delta.to_bytes();
+
+        let mut bytes = [0u8; Self::SIZE];
+
+        bytes[..32].copy_from_slice(&gamma);
+        bytes[32..].copy_from_slice(&delta);
+
+        bytes
+    }
+
+    /// Deserialize from a [`ElgamalCipher::to_bytes`] construction
+    fn from_bytes(bytes: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
+        let gamma = JubJubAffine::from_slice(&bytes[..32])?;
+        let delta = JubJubAffine::from_slice(&bytes[32..])?;
+        let cipher = ElgamalCipher::new(gamma.into(), delta.into());
+        Ok(cipher)
+    }
+}
+
 impl ElgamalCipher {
     /// [`ElgamalCipher`] constructor
     pub fn new(gamma: JubJubExtended, delta: JubJubExtended) -> Self {
@@ -103,48 +132,6 @@ impl ElgamalCipher {
     /// Perform the decryption with the provided secret.
     pub fn decrypt(&self, secret: &JubJubScalar) -> JubJubExtended {
         self.delta - self.gamma * secret
-    }
-
-    /// Serialize the cipher into bytes
-    pub fn to_bytes(&self) -> [u8; 64] {
-        let gamma: JubJubAffine = self.gamma.into();
-        let gamma = gamma.to_bytes();
-
-        let delta: JubJubAffine = self.delta.into();
-        let delta = delta.to_bytes();
-
-        let mut bytes = [0u8; 64];
-
-        bytes[..32].copy_from_slice(&gamma);
-        bytes[32..].copy_from_slice(&delta);
-
-        bytes
-    }
-
-    /// Deserialize from a [`ElgamalCipher::to_bytes`] construction
-    pub fn from_bytes(bytes: [u8; 64]) -> Option<Self> {
-        let mut gamma = [0u8; 32];
-        let mut delta = [0u8; 32];
-
-        gamma.copy_from_slice(&bytes[..32]);
-        delta.copy_from_slice(&bytes[32..]);
-
-        let gamma = JubJubAffine::from_bytes(gamma);
-        let gamma = if gamma.is_some().into() {
-            gamma.unwrap()
-        } else {
-            return None;
-        };
-
-        let delta = JubJubAffine::from_bytes(delta);
-        let delta = if delta.is_some().into() {
-            delta.unwrap()
-        } else {
-            return None;
-        };
-
-        let cipher = ElgamalCipher::new(gamma.into(), delta.into());
-        Some(cipher)
     }
 }
 
@@ -224,6 +211,7 @@ impl<'b> MulAssign<&'b JubJubScalar> for ElgamalCipher {
 mod tests {
     use super::ElgamalCipher;
     use crate::{JubJubExtended, JubJubScalar, GENERATOR_EXTENDED};
+    use dusk_bytes::Serializable;
 
     fn gen() -> (JubJubScalar, JubJubExtended, JubJubScalar, JubJubExtended) {
         let a = JubJubScalar::random(&mut rand::thread_rng());
@@ -360,7 +348,7 @@ mod tests {
 
         let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);
         let cipher = cipher.to_bytes();
-        let cipher = ElgamalCipher::from_bytes(cipher).unwrap();
+        let cipher = ElgamalCipher::from_bytes(&cipher).unwrap();
 
         let decrypt = cipher.decrypt(&b);
 
