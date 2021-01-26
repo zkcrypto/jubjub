@@ -1,4 +1,4 @@
-# Unreleased
+# 0.6.0
 ## Changed
 - Bumped dependencies to `bitvec 0.20`, `bls12_381 0.4`, `ff 0.9`, `group 0.9`,
   `rand_core 0.6`.
