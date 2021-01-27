@@ -1,3 +1,7 @@
+# 0.8.0
+### Change
+- Update canonical to `v0.5`
+
 # 0.7.0
 ### Add
 - Add `Serializable` trait to all structures
