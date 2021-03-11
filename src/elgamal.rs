@@ -7,7 +7,7 @@ use dusk_bytes::{DeserializableSlice, Error as BytesError, Serializable};
 ///
 /// ## Example
 ///
-/// ```rust
+/// ```ignore
 /// use dusk_jubjub::elgamal::ElgamalCipher;
 /// use dusk_jubjub::{JubJubScalar, GENERATOR_EXTENDED};
 ///
@@ -207,8 +207,10 @@ impl<'b> MulAssign<&'b JubJubScalar> for ElgamalCipher {
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
+
     use super::ElgamalCipher;
     use crate::{JubJubExtended, JubJubScalar, GENERATOR_EXTENDED};
     use dusk_bytes::Serializable;
