@@ -1,3 +1,9 @@
+# Unreleased
+## Changed
+- Bumped dependencies to `bitvec 0.22`, `bls12_381 0.5`, `ff 0.10`,
+  `group 0.10`.
+- MSRV is now 1.51.0.
+
 # 0.6.0
 ## Changed
 - Bumped dependencies to `bitvec 0.20`, `bls12_381 0.4`, `ff 0.9`, `group 0.9`,
