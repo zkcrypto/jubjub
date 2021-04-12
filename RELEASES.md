@@ -1,3 +1,7 @@
+# Unreleased
+### Fix
+- Fix no_std compatibility for crate.[#67](https://github.com/dusk-network/jubjub/pull/67)
+
 # 0.8.1
 ### Change
 - Issue #61 - Fix on default-features prop of dusk-bls12_381 dependency
