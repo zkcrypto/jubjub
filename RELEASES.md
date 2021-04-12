@@ -1,6 +1,10 @@
-## Unreleased
+# Unreleased
+### Fix
+- Fix no_std compatibility for crate.[#67](https://github.com/dusk-network/jubjub/pull/67)
+
 ### Change
 - Set `blake2` as dev-dep. [#64](https://github.com/dusk-network/jubjub/issues/64)
+
 
 # 0.8.1
 ### Change
