@@ -2,9 +2,13 @@
 ### Fix
 - Fix no_std compatibility for crate.[#67](https://github.com/dusk-network/jubjub/pull/67)
 
+### Change
+- Set `blake2` as dev-dep. [#64](https://github.com/dusk-network/jubjub/issues/64)
+
+
 # 0.8.1
 ### Change
-- Issue #61 - Fix on default-features prop of dusk-bls12_381 dependency
+- Fix on default-features prop of dusk-bls12_381 dependency [#61](https://github.com/dusk-network/jubjub/issues/61)
 
 # 0.8.0
 ### Change
