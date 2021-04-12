@@ -1,4 +1,6 @@
 # Unreleased
+
+# 0.9.0
 ### Fix
 - Fix no_std compatibility for crate.[#67](https://github.com/dusk-network/jubjub/pull/67)
 
