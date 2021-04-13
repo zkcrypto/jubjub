@@ -7,7 +7,7 @@ use dusk_bytes::{DeserializableSlice, Error as BytesError, Serializable};
 ///
 /// ## Example
 ///
-/// ```rust
+/// ```ignore
 /// use dusk_jubjub::elgamal::ElgamalCipher;
 /// use dusk_jubjub::{JubJubScalar, GENERATOR_EXTENDED};
 ///
@@ -207,17 +207,20 @@ impl<'b> MulAssign<&'b JubJubScalar> for ElgamalCipher {
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
+
     use super::ElgamalCipher;
     use crate::{JubJubExtended, JubJubScalar, GENERATOR_EXTENDED};
     use dusk_bytes::Serializable;
+    use rand_core::OsRng;
 
     fn gen() -> (JubJubScalar, JubJubExtended, JubJubScalar, JubJubExtended) {
-        let a = JubJubScalar::random(&mut rand::thread_rng());
+        let a = JubJubScalar::random(&mut OsRng);
         let a_g = GENERATOR_EXTENDED * a;
 
-        let b = JubJubScalar::random(&mut rand::thread_rng());
+        let b = JubJubScalar::random(&mut OsRng);
         let b_g = GENERATOR_EXTENDED * b;
 
         (a, a_g, b, b_g)
@@ -227,7 +230,7 @@ mod tests {
     fn encrypt() {
         let (a, _, b, b_g) = gen();
 
-        let m = JubJubScalar::random(&mut rand::thread_rng());
+        let m = JubJubScalar::random(&mut OsRng);
         let m = GENERATOR_EXTENDED * m;
 
         let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);
@@ -240,7 +243,7 @@ mod tests {
     fn wrong_key() {
         let (a, _, b, b_g) = gen();
 
-        let m = JubJubScalar::random(&mut rand::thread_rng());
+        let m = JubJubScalar::random(&mut OsRng);
         let m = GENERATOR_EXTENDED * m;
 
         let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);
@@ -257,7 +260,7 @@ mod tests {
 
         let mut m = [JubJubScalar::zero(); 4];
         m.iter_mut()
-            .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
+            .for_each(|x| *x = JubJubScalar::random(&mut OsRng));
 
         let mut m_g = [JubJubExtended::default(); 4];
         m_g.iter_mut()
@@ -287,7 +290,7 @@ mod tests {
 
         let mut m = [JubJubScalar::zero(); 4];
         m.iter_mut()
-            .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
+            .for_each(|x| *x = JubJubScalar::random(&mut OsRng));
 
         let mut m_g = [JubJubExtended::default(); 4];
         m_g.iter_mut()
@@ -317,7 +320,7 @@ mod tests {
 
         let mut m = [JubJubScalar::zero(); 4];
         m.iter_mut()
-            .for_each(|x| *x = JubJubScalar::random(&mut rand::thread_rng()));
+            .for_each(|x| *x = JubJubScalar::random(&mut OsRng));
 
         let mut m_g = [JubJubExtended::default(); 4];
         m_g.iter_mut()
@@ -343,7 +346,7 @@ mod tests {
     fn to_bytes() {
         let (a, _, b, b_g) = gen();
 
-        let m = JubJubScalar::random(&mut rand::thread_rng());
+        let m = JubJubScalar::random(&mut OsRng);
         let m = GENERATOR_EXTENDED * m;
 
         let cipher = ElgamalCipher::encrypt(&a, &b_g, &GENERATOR_EXTENDED, &m);
