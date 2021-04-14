@@ -1,11 +1,12 @@
 # Unreleased
 
 ### Change
-- Update `dusk-bls12_381` to `0.8.0-rc.0`.
+- Update `dusk-bls12_381` to `0.8.0-rc.0`. [#73](https://github.com/dusk-network/jubjub/issues/73)
+- Update `canonical` to `0.6.0`. [#78](https://github.com/dusk-network/jubjub/issues/78)
 
 # 0.9.0
 ### Fix
-- Fix no_std compatibility for crate.[#67](https://github.com/dusk-network/jubjub/pull/67)
+- Fix no_std compatibility for crate.[#67](https://github.com/dusk-network/jubjub/issues/67)
 
 ### Change
 - Set `blake2` as dev-dep. [#64](https://github.com/dusk-network/jubjub/issues/64)
