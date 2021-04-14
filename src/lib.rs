@@ -39,8 +39,6 @@
 extern crate std;
 
 #[cfg(feature = "canon")]
-use canonical::Canon;
-#[cfg(feature = "canon")]
 use canonical_derive::Canon;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use dusk_bytes::{Error as BytesError, Serializable};

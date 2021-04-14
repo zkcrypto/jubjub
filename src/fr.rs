@@ -3,8 +3,6 @@
 //! 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
 
 #[cfg(feature = "canon")]
-use canonical::Canon;
-#[cfg(feature = "canon")]
 use canonical_derive::Canon;
 use core::cmp::{Ord, Ordering, PartialOrd};
 use core::convert::TryInto;
