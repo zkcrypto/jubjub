@@ -1,7 +1,8 @@
 # Unreleased
 
+# 0.10.0
 ### Change
-- Update `dusk-bls12_381` to `0.8.0-rc.0`. [#73](https://github.com/dusk-network/jubjub/issues/73)
+- Update `dusk-bls12_381` to `0.8.0`. [#73](https://github.com/dusk-network/jubjub/issues/73)
 - Update `canonical` to `0.6.0`. [#78](https://github.com/dusk-network/jubjub/issues/78)
 
 # 0.9.0
