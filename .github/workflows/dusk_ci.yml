@@ -16,7 +16,7 @@ jobs:
           command: check
 
   test_nightly:
-      name: Nightly tests
+      name: Nightly tests std
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v2
@@ -28,8 +28,23 @@ jobs:
             command: test
             args: --release
 
-  test_nightly_nostd:
-      name: Nightly tests
+  build_nightly_nostd:
+      name: Nightly build no_std
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - uses: actions-rs/toolchain@v1
+          with:
+            profile: minimal  
+        # ARM contains no std lib. Just core and alloc.
+        - run: rustup target add thumbv6m-none-eabi
+        - uses: actions-rs/cargo@v1
+          with:
+            command: build
+            args: --release --no-default-features --target thumbv6m-none-eabi
+  
+  test_nightly_canon_feature:
+      name: Nightly tests canon
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v2
@@ -39,7 +54,7 @@ jobs:
         - uses: actions-rs/cargo@v1
           with:
             command: test
-            args: --release --no-default-features
+            args: --release --no-default-features --features canon
 
   fmt:
     name: Rustfmt
@@ -51,7 +66,7 @@ jobs:
           profile: minimal
           toolchain: nightly-2020-10-25
           override: true
-      - run: rustup component add rustfmt
+          components: rustfmt
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
