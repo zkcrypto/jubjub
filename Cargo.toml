@@ -14,7 +14,7 @@ version = "0.6.0"
 edition = "2018"
 
 [dependencies.bitvec]
-version = "0.20"
+version = "0.22"
 default-features = false
 
 [dependencies.bls12_381]
@@ -45,8 +45,9 @@ version = "0.3"
 default-features = false
 
 [features]
-default = ["alloc"]
+default = ["alloc", "bits"]
 alloc = ["group/alloc"]
+bits = ["ff/bits"]
 
 [[bench]]
 name = "fq_bench"
@@ -59,3 +60,8 @@ harness = false
 [[bench]]
 name = "point_bench"
 harness = false
+
+[patch.crates-io]
+bls12_381 = { git = "https://github.com/zkcrypto/bls12_381.git", branch = "main", default-features = false }
+ff = { git = "https://github.com/zkcrypto/ff.git", branch = "main", default-features = false }
+group = { git = "https://github.com/zkcrypto/group.git", branch = "main", default-features = false }
