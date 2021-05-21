@@ -45,7 +45,7 @@ version = "0.3"
 default-features = false
 
 [features]
-default = ["alloc"]
+default = ["alloc", "bits"]
 alloc = ["group/alloc"]
 bits = ["ff/bits"]
 
