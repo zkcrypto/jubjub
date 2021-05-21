@@ -62,6 +62,6 @@ name = "point_bench"
 harness = false
 
 [patch.crates-io]
-bls12_381 = { git = "https://github.com/nuttycom/bls12_381.git", branch = "bitvec-0.22", default-features = false }
+bls12_381 = { git = "https://github.com/zkcrypto/bls12_381.git", branch = "main", default-features = false }
 ff = { git = "https://github.com/zkcrypto/ff.git", branch = "main", default-features = false }
 group = { git = "https://github.com/zkcrypto/group.git", branch = "main", default-features = false }
