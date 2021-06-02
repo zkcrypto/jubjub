@@ -22,11 +22,11 @@ version = "0.4"
 default-features = false
 
 [dependencies.ff]
-version = "0.9"
+version = "0.10"
 default-features = false
 
 [dependencies.group]
-version = "0.9"
+version = "0.10"
 default-features = false
 
 [dependencies.rand_core]
@@ -63,5 +63,3 @@ harness = false
 
 [patch.crates-io]
 bls12_381 = { git = "https://github.com/zkcrypto/bls12_381.git", branch = "main", default-features = false }
-ff = { git = "https://github.com/zkcrypto/ff.git", branch = "main", default-features = false }
-group = { git = "https://github.com/zkcrypto/group.git", branch = "main", default-features = false }
