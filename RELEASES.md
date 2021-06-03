@@ -1,4 +1,4 @@
-# Unreleased
+# 0.7.0
 ## Security
 - A bug in the `jubjub::{AffinePoint, ExtendedPoint, SubgroupPoint}::from_bytes`
   APIs (and their `group::GroupEncoding` implementations) has been fixed. The
