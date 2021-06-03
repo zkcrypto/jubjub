@@ -1,4 +1,16 @@
 # Unreleased
+## Security
+- A bug in the `jubjub::{AffinePoint, ExtendedPoint, SubgroupPoint}::from_bytes`
+  APIs (and their `group::GroupEncoding` implementations) has been fixed. The
+  APIs were documented as rejecting non-canonical points, but were accidentally
+  accepting two specific non-canonical encodings. This could potentially cause a
+  problem in consensus-critical protocols that expect encodings to be round-trip
+  compatible (i.e. `AffinePoint::from_bytes(b).unwrap().to_bytes() == b`). See
+  [ZIP 216](https://zips.z.cash/zip-0216) for more details.
+  - A new API `jubjub::AffinePoint::from_bytes_pre_zip216_compatibility`
+    preserves the previous behaviour, for use where consensus compatibility is
+    required.
+
 ## Changed
 - Bumped dependencies to `bitvec 0.22`, `bls12_381 0.5`, `ff 0.10`,
   `group 0.10`.

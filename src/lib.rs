@@ -455,7 +455,30 @@ impl AffinePoint {
     /// Attempts to interpret a byte representation of an
     /// affine point, failing if the element is not on
     /// the curve or non-canonical.
-    pub fn from_bytes(mut b: [u8; 32]) -> CtOption<Self> {
+    pub fn from_bytes(b: [u8; 32]) -> CtOption<Self> {
+        Self::from_bytes_inner(b, 1.into())
+    }
+
+    /// Attempts to interpret a byte representation of an affine point, failing if the
+    /// element is not on the curve.
+    ///
+    /// Most non-canonical encodings will also cause a failure. However, this API
+    /// preserves (for use in consensus-critical protocols) a bug in the parsing code that
+    /// caused two non-canonical encodings to be **silently** accepted:
+    ///
+    /// - (0, 1), which is the identity;
+    /// - (0, -1), which is a point of order two.
+    ///
+    /// Each of these has a single non-canonical encoding in which the value of the sign
+    /// bit is 1.
+    ///
+    /// See [ZIP 216](https://zips.z.cash/zip-0216) for a more detailed description of the
+    /// bug, as well as its fix.
+    pub fn from_bytes_pre_zip216_compatibility(b: [u8; 32]) -> CtOption<Self> {
+        Self::from_bytes_inner(b, 0.into())
+    }
+
+    fn from_bytes_inner(mut b: [u8; 32], zip_216_enabled: Choice) -> CtOption<Self> {
         // Grab the sign bit from the representation
         let sign = b[31] >> 7;
 
@@ -485,7 +508,16 @@ impl AffinePoint {
                     let u_negated = -u;
                     let final_u = Fq::conditional_select(&u, &u_negated, flip_sign);
 
-                    CtOption::new(AffinePoint { u: final_u, v }, Choice::from(1u8))
+                    // If u == 0, flip_sign == sign_bit. We therefore want to reject the
+                    // encoding as non-canonical if all of the following occur:
+                    // - ZIP 216 is enabled
+                    // - u == 0
+                    // - flip_sign == true
+                    let u_is_zero = u.ct_eq(&Fq::zero());
+                    CtOption::new(
+                        AffinePoint { u: final_u, v },
+                        !(zip_216_enabled & u_is_zero & flip_sign),
+                    )
                 })
         })
     }
@@ -1762,5 +1794,50 @@ fn test_serialization_consistency() {
         assert_eq!(affine, deserialized);
         assert_eq!(expected_serialized, serialized);
         p += gen;
+    }
+}
+
+#[test]
+fn test_zip_216() {
+    const NON_CANONICAL_ENCODINGS: [[u8; 32]; 2] = [
+        // (0, 1) with sign bit set to 1.
+        [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x80,
+        ],
+        // (0, -1) with sign bit set to 1.
+        [
+            0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xfe, 0x5b, 0xfe, 0xff, 0x02, 0xa4,
+            0xbd, 0x53, 0x05, 0xd8, 0xa1, 0x09, 0x08, 0xd8, 0x39, 0x33, 0x48, 0x7d, 0x9d, 0x29,
+            0x53, 0xa7, 0xed, 0xf3,
+        ],
+    ];
+
+    for b in &NON_CANONICAL_ENCODINGS {
+        {
+            let mut encoding = *b;
+
+            // The normal API should reject the non-canonical encoding.
+            assert!(bool::from(AffinePoint::from_bytes(encoding).is_none()));
+
+            // If we clear the sign bit of the non-canonical encoding, it should be
+            // accepted by the normal API.
+            encoding[31] &= 0b0111_1111;
+            assert!(bool::from(AffinePoint::from_bytes(encoding).is_some()));
+        }
+
+        {
+            // The bug-preserving API should accept the non-canonical encoding, and the
+            // resulting point should serialize to a different (canonical) encoding.
+            let parsed = AffinePoint::from_bytes_pre_zip216_compatibility(*b).unwrap();
+            let mut encoded = parsed.to_bytes();
+            assert_ne!(b, &encoded);
+
+            // If we set the sign bit of the serialized encoding, it should match the
+            // non-canonical encoding.
+            encoded[31] |= 0b1000_0000;
+            assert_eq!(b, &encoded);
+        }
     }
 }
