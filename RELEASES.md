@@ -7,8 +7,9 @@
   problem in consensus-critical protocols that expect encodings to be round-trip
   compatible (i.e. `AffinePoint::from_bytes(b).unwrap().to_bytes() == b`). See
   [ZIP 216](https://zips.z.cash/zip-0216) for more details.
-  - A new API `jubjub::AffinePoint::from_bytes_with_zip_216_bug` preserves the
-    previous behaviour for consensus compatibility.
+  - A new API `jubjub::AffinePoint::from_bytes_pre_zip216_compatibility`
+    preserves the previous behaviour, for use where consensus compatibility is
+    required.
 
 ## Changed
 - Bumped dependencies to `bitvec 0.22`, `bls12_381 0.5`, `ff 0.10`,

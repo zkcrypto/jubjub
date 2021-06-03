@@ -464,7 +464,7 @@ impl AffinePoint {
     ///
     /// Most non-canonical encodings will also cause a failure. However, this API
     /// preserves (for use in consensus-critical protocols) a bug in the parsing code that
-    /// caused two non-canonical encodings to be silently accepted:
+    /// caused two non-canonical encodings to be **silently** accepted:
     ///
     /// - (0, 1), which is the identity;
     /// - (0, -1), which is a point of order two.
@@ -474,7 +474,7 @@ impl AffinePoint {
     ///
     /// See [ZIP 216](https://zips.z.cash/zip-0216) for a more detailed description of the
     /// bug, as well as its fix.
-    pub fn from_bytes_with_zip_216_bug(b: [u8; 32]) -> CtOption<Self> {
+    pub fn from_bytes_pre_zip216_compatibility(b: [u8; 32]) -> CtOption<Self> {
         Self::from_bytes_inner(b, 0.into())
     }
 
@@ -1830,7 +1830,7 @@ fn test_zip_216() {
         {
             // The bug-preserving API should accept the non-canonical encoding, and the
             // resulting point should serialize to a different (canonical) encoding.
-            let parsed = AffinePoint::from_bytes_with_zip_216_bug(*b).unwrap();
+            let parsed = AffinePoint::from_bytes_pre_zip216_compatibility(*b).unwrap();
             let mut encoded = parsed.to_bytes();
             assert_ne!(b, &encoded);
 
