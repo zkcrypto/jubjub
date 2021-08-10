@@ -28,6 +28,9 @@
 // operators, and so this lint is triggered unnecessarily.
 #![allow(clippy::suspicious_arithmetic_impl)]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;
@@ -45,6 +48,9 @@ use group::{
 };
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 #[cfg(feature = "alloc")]
 use group::WnafGroup;
@@ -520,6 +526,106 @@ impl AffinePoint {
                     )
                 })
         })
+    }
+
+    /// Attempts to interpret a batch of byte representations of affine points.
+    ///
+    /// Returns None for each element if it is not on the curve or is non-canonical.
+    #[cfg(feature = "alloc")]
+    pub fn batch_from_bytes(items: impl Iterator<Item = [u8; 32]>) -> Vec<CtOption<Self>> {
+        #[derive(Clone, Copy, Default)]
+        struct Item {
+            sign: u8,
+            v: Fq,
+            numerator: Fq,
+            denominator: Fq,
+        }
+
+        impl ConditionallySelectable for Item {
+            fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+                Item {
+                    sign: u8::conditional_select(&a.sign, &b.sign, choice),
+                    v: Fq::conditional_select(&a.v, &b.v, choice),
+                    numerator: Fq::conditional_select(&a.numerator, &b.numerator, choice),
+                    denominator: Fq::conditional_select(&a.denominator, &b.denominator, choice),
+                }
+            }
+        }
+
+        let items = items.map(|mut b| {
+            // Grab the sign bit from the representation
+            let sign = b[31] >> 7;
+
+            // Mask away the sign bit
+            b[31] &= 0b0111_1111;
+
+            // Interpret what remains as the v-coordinate
+            Fq::from_bytes(&b).map(|v| {
+                // -u^2 + v^2 = 1 + d.u^2.v^2
+                // -u^2 = 1 + d.u^2.v^2 - v^2    (rearrange)
+                // -u^2 - d.u^2.v^2 = 1 - v^2    (rearrange)
+                // u^2 + d.u^2.v^2 = v^2 - 1     (flip signs)
+                // u^2 (1 + d.v^2) = v^2 - 1     (factor)
+                // u^2 = (v^2 - 1) / (1 + d.v^2) (isolate u^2)
+
+                let v2 = v.square();
+
+                Item {
+                    v,
+                    sign,
+                    numerator: (v2 - Fq::one()),
+                    denominator: Fq::one() + EDWARDS_D * v2,
+                }
+            })
+        });
+
+        let mut acc = Fq::one();
+        let mut tmp = Vec::with_capacity(items.size_hint().0);
+        for item in items {
+            // We know that (1 + d.v^2) is nonzero for all v:
+            //   (1 + d.v^2) = 0
+            //   d.v^2 = -1
+            //   v^2 = -(1 / d)   No solutions, as -(1 / d) is not a square
+            //
+            // So we can use zero as a placeholder for invalid items.
+            let q = item.map(|item| item.denominator).unwrap_or(Fq::zero());
+            tmp.push((acc, item));
+            acc = Fq::conditional_select(&(acc * q), &acc, q.ct_eq(&Fq::zero()));
+        }
+        acc = acc.invert().unwrap();
+
+        let mut ret: Vec<_> = tmp
+            .into_iter()
+            .rev()
+            .map(|(tmp, item)| {
+                let q = item.map(|item| item.denominator).unwrap_or(Fq::zero());
+                let skip = q.ct_eq(&Fq::zero());
+                let ret = item.and_then(
+                    |Item {
+                         v, sign, numerator, ..
+                     }| {
+                        let inv_denominator = tmp * acc;
+                        (numerator * inv_denominator).sqrt().and_then(|u| {
+                            // Fix the sign of `u` if necessary
+                            let flip_sign = Choice::from((u.to_bytes()[0] ^ sign) & 1);
+                            let u_negated = -u;
+                            let final_u = Fq::conditional_select(&u, &u_negated, flip_sign);
+
+                            // If u == 0, flip_sign == sign_bit. We therefore want to reject the
+                            // encoding as non-canonical if all of the following occur:
+                            // - u == 0
+                            // - flip_sign == true
+                            let u_is_zero = u.ct_eq(&Fq::zero());
+                            CtOption::new(AffinePoint { u: final_u, v }, !(u_is_zero & flip_sign))
+                        })
+                    },
+                );
+                acc = Fq::conditional_select(&(acc * q), &acc, skip);
+                ret
+            })
+            .collect();
+        ret.reverse();
+        ret
     }
 
     /// Returns the `u`-coordinate of this point.
@@ -1786,12 +1892,15 @@ fn test_serialization_consistency() {
         ],
     ];
 
-    for expected_serialized in v {
+    let batched = AffinePoint::batch_from_bytes(v.iter().cloned());
+
+    for (expected_serialized, batch_deserialized) in v.into_iter().zip(batched.into_iter()) {
         assert!(p.is_on_curve_vartime());
         let affine = AffinePoint::from(p);
         let serialized = affine.to_bytes();
         let deserialized = AffinePoint::from_bytes(serialized).unwrap();
         assert_eq!(affine, deserialized);
+        assert_eq!(affine, batch_deserialized.unwrap());
         assert_eq!(expected_serialized, serialized);
         p += gen;
     }
