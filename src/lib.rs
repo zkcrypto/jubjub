@@ -530,7 +530,8 @@ impl AffinePoint {
 
     /// Attempts to interpret a batch of byte representations of affine points.
     ///
-    /// Returns None for each element if it is not on the curve or is non-canonical.
+    /// Returns None for each element if it is not on the curve, or is non-canonical
+    /// according to ZIP 216.
     #[cfg(feature = "alloc")]
     pub fn batch_from_bytes(items: impl Iterator<Item = [u8; 32]>) -> Vec<CtOption<Self>> {
         #[derive(Clone, Copy, Default)]
