@@ -567,6 +567,10 @@ impl AffinePoint {
                 // u^2 + d.u^2.v^2 = v^2 - 1     (flip signs)
                 // u^2 (1 + d.v^2) = v^2 - 1     (factor)
                 // u^2 = (v^2 - 1) / (1 + d.v^2) (isolate u^2)
+                // We know that (1 + d.v^2) is nonzero for all v:
+                //   (1 + d.v^2) = 0
+                //   d.v^2 = -1
+                //   v^2 = -(1 / d)   No solutions, as -(1 / d) is not a square
 
                 let v2 = v.square();
 
@@ -582,15 +586,8 @@ impl AffinePoint {
         let mut acc = Fq::one();
         let mut tmp = Vec::with_capacity(items.size_hint().0);
         for item in items {
-            // We know that (1 + d.v^2) is nonzero for all v:
-            //   (1 + d.v^2) = 0
-            //   d.v^2 = -1
-            //   v^2 = -(1 / d)   No solutions, as -(1 / d) is not a square
-            //
-            // So we can use zero as a placeholder for invalid items.
-            let q = item.map(|item| item.denominator).unwrap_or(Fq::zero());
             tmp.push((acc, item));
-            acc = Fq::conditional_select(&(acc * q), &acc, q.ct_eq(&Fq::zero()));
+            acc *= item.map(|item| item.denominator).unwrap_or(Fq::one());
         }
         acc = acc.invert().unwrap();
 
@@ -598,8 +595,6 @@ impl AffinePoint {
             .into_iter()
             .rev()
             .map(|(tmp, item)| {
-                let q = item.map(|item| item.denominator).unwrap_or(Fq::zero());
-                let skip = q.ct_eq(&Fq::zero());
                 let ret = item.and_then(
                     |Item {
                          v, sign, numerator, ..
@@ -620,7 +615,7 @@ impl AffinePoint {
                         })
                     },
                 );
-                acc = Fq::conditional_select(&(acc * q), &acc, skip);
+                acc *= item.map(|item| item.denominator).unwrap_or(Fq::one());
                 ret
             })
             .collect();
