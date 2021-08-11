@@ -46,7 +46,7 @@ default-features = false
 
 [features]
 default = ["alloc", "bits"]
-alloc = ["group/alloc"]
+alloc = ["ff/alloc", "group/alloc"]
 bits = ["ff/bits"]
 
 [[bench]]
@@ -60,3 +60,6 @@ harness = false
 [[bench]]
 name = "point_bench"
 harness = false
+
+[patch.crates-io]
+ff = { git = "https://github.com/zkcrypto/ff.git", rev = "ddb1287b7d235c4bd599d43b9b5aacd532a35d52" }
