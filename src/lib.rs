@@ -62,7 +62,12 @@ mod fr;
 pub use bls12_381::Scalar as Fq;
 pub use fr::Fr;
 
-/// A better name than Fr.
+/// Represents an element of the base field $\mathbb{F}_q$ of the Jubjub elliptic curve
+/// construction.
+pub type Base = Fq;
+
+/// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub elliptic curve
+/// construction.
 pub type Scalar = Fr;
 
 const FR_MODULUS_BYTES: [u8; 32] = [
