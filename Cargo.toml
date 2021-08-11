@@ -22,7 +22,7 @@ version = "0.5"
 default-features = false
 
 [dependencies.ff]
-version = "0.10"
+version = "0.10.1"
 default-features = false
 
 [dependencies.group]
@@ -46,7 +46,7 @@ default-features = false
 
 [features]
 default = ["alloc", "bits"]
-alloc = ["group/alloc"]
+alloc = ["ff/alloc", "group/alloc"]
 bits = ["ff/bits"]
 
 [[bench]]
