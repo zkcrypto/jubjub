@@ -22,7 +22,7 @@ version = "0.5"
 default-features = false
 
 [dependencies.ff]
-version = "0.10"
+version = "0.10.1"
 default-features = false
 
 [dependencies.group]
@@ -60,6 +60,3 @@ harness = false
 [[bench]]
 name = "point_bench"
 harness = false
-
-[patch.crates-io]
-ff = { git = "https://github.com/zkcrypto/ff.git", rev = "ddb1287b7d235c4bd599d43b9b5aacd532a35d52" }
