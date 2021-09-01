@@ -4,6 +4,9 @@
 - `jubjub::AffinePoint::batch_from_bytes`, which enables the inversion inside
   `jubjub::AffinePoint::from_bytes` to be batched.
 
+## Changed
+- Bumped dependencies to `bls12_381 0.6`, `ff 0.11`, `group 0.11`.
+
 # 0.7.0
 ## Security
 - A bug in the `jubjub::{AffinePoint, ExtendedPoint, SubgroupPoint}::from_bytes`
