@@ -1,8 +1,11 @@
-# Unreleased
+# 0.8.0
 ## Added
 - `jubjub::Base`, as an alias for `jubjub::Fq`.
 - `jubjub::AffinePoint::batch_from_bytes`, which enables the inversion inside
   `jubjub::AffinePoint::from_bytes` to be batched.
+
+## Changed
+- Bumped dependencies to `bls12_381 0.6`, `ff 0.11`, `group 0.11`.
 
 # 0.7.0
 ## Security

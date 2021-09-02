@@ -648,10 +648,6 @@ impl Field for Fr {
         Self::one()
     }
 
-    fn is_zero(&self) -> bool {
-        self.ct_eq(&Self::zero()).into()
-    }
-
     #[must_use]
     fn square(&self) -> Self {
         self.square()
@@ -674,21 +670,16 @@ impl Field for Fr {
 impl PrimeField for Fr {
     type Repr = [u8; 32];
 
-    fn from_repr(r: Self::Repr) -> Option<Self> {
-        let res = Self::from_bytes(&r);
-        if res.is_some().into() {
-            Some(res.unwrap())
-        } else {
-            None
-        }
+    fn from_repr(r: Self::Repr) -> CtOption<Self> {
+        Self::from_bytes(&r)
     }
 
     fn to_repr(&self) -> Self::Repr {
         self.to_bytes()
     }
 
-    fn is_odd(&self) -> bool {
-        self.to_bytes()[0] & 1 == 1
+    fn is_odd(&self) -> Choice {
+        Choice::from(self.to_bytes()[0] & 1)
     }
 
     const NUM_BITS: u32 = MODULUS_BITS;
