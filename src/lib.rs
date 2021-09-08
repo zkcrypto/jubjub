@@ -485,6 +485,10 @@ impl Serializable<32> for JubJubAffine {
     /// Attempts to interpret a byte representation of an
     /// affine point, failing if the element is not on
     /// the curve or non-canonical.
+    ///
+    /// NOTE: ZIP 216 is enabled by default and the only way to interact with
+    /// serialization.
+    /// See: <https://zips.z.cash/zip-0216> for more details.
     fn from_bytes(b: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
         let mut b = b.clone();
 
@@ -523,7 +527,16 @@ impl Serializable<32> for JubJubAffine {
                 let final_x =
                     BlsScalar::conditional_select(&x, &x_negated, flip_sign);
 
-                CtOption::new(JubJubAffine { x: final_x, y }, Choice::from(1u8))
+                // If x == 0, flip_sign == sign_bit. We therefore want to reject
+                // the encoding as non-canonical if all of the
+                // following occur:
+                // - x == 0
+                // - flip_sign == true
+                let x_is_zero = x.ct_eq(&BlsScalar::zero());
+                CtOption::new(
+                    JubJubAffine { x: final_x, y },
+                    !(x_is_zero & flip_sign),
+                )
             }),
         )
         .ok_or(BytesError::InvalidData)
@@ -1580,4 +1593,36 @@ fn test_serialization_consistency() {
 /// Compute a shared secret `secret · public` using DHKE protocol
 pub fn dhke(secret: &Fr, public: &JubJubExtended) -> JubJubAffine {
     public.mul(secret).into()
+}
+
+#[test]
+fn test_zip_216() {
+    const NON_CANONICAL_ENCODINGS: [[u8; 32]; 2] = [
+        // (0, 1) with sign bit set to 1.
+        [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,
+        ],
+        // (0, -1) with sign bit set to 1.
+        [
+            0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xfe, 0x5b, 0xfe,
+            0xff, 0x02, 0xa4, 0xbd, 0x53, 0x05, 0xd8, 0xa1, 0x09, 0x08, 0xd8,
+            0x39, 0x33, 0x48, 0x7d, 0x9d, 0x29, 0x53, 0xa7, 0xed, 0xf3,
+        ],
+    ];
+
+    for b in &NON_CANONICAL_ENCODINGS {
+        {
+            let mut encoding = *b;
+
+            // The normal API should reject the non-canonical encoding.
+            assert!(bool::from(JubJubAffine::from_bytes(&encoding).is_err()));
+
+            // If we clear the sign bit of the non-canonical encoding, it should
+            // be accepted by the normal API.
+            encoding[31] &= 0b0111_1111;
+            assert!(bool::from(JubJubAffine::from_bytes(&encoding).is_ok()));
+        }
+    }
 }
