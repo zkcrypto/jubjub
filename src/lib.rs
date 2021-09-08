@@ -523,20 +523,14 @@ impl Serializable<32> for JubJubAffine {
             .and_then(|x| {
                 // Fix the sign of `x` if necessary
                 let flip_sign = Choice::from((x.to_bytes()[0] ^ sign) & 1);
-                let x_negated = -x;
-                let final_x =
-                    BlsScalar::conditional_select(&x, &x_negated, flip_sign);
-
+                let x = BlsScalar::conditional_select(&x, &-x, flip_sign);
                 // If x == 0, flip_sign == sign_bit. We therefore want to reject
                 // the encoding as non-canonical if all of the
                 // following occur:
                 // - x == 0
                 // - flip_sign == true
                 let x_is_zero = x.ct_eq(&BlsScalar::zero());
-                CtOption::new(
-                    JubJubAffine { x: final_x, y },
-                    !(x_is_zero & flip_sign),
-                )
+                CtOption::new(JubJubAffine { x, y }, !(x_is_zero & flip_sign))
             }),
         )
         .ok_or(BytesError::InvalidData)
@@ -1613,16 +1607,14 @@ fn test_zip_216() {
     ];
 
     for b in &NON_CANONICAL_ENCODINGS {
-        {
-            let mut encoding = *b;
+        let mut encoding = *b;
 
-            // The normal API should reject the non-canonical encoding.
-            assert!(bool::from(JubJubAffine::from_bytes(&encoding).is_err()));
+        // The normal API should reject the non-canonical encoding.
+        assert!(bool::from(JubJubAffine::from_bytes(&encoding).is_err()));
 
-            // If we clear the sign bit of the non-canonical encoding, it should
-            // be accepted by the normal API.
-            encoding[31] &= 0b0111_1111;
-            assert!(bool::from(JubJubAffine::from_bytes(&encoding).is_ok()));
-        }
+        // If we clear the sign bit of the non-canonical encoding, it should
+        // be accepted by the normal API.
+        encoding[31] &= 0b0111_1111;
+        assert!(bool::from(JubJubAffine::from_bytes(&encoding).is_ok()));
     }
 }
