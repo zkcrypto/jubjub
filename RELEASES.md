@@ -1,5 +1,9 @@
 # Unreleased
 
+# 0.10.1
+### Fix
+- Fix ZZIP-216 bug with neg identity encoding. [#82](https://github.com/dusk-network/jubjub/issues/82)
+
 # 0.10.0
 ### Change
 - Update `dusk-bls12_381` to `0.8.0`. [#73](https://github.com/dusk-network/jubjub/issues/73)
