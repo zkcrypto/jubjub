@@ -13,7 +13,7 @@ repository = "https://github.com/dusk-network/jubjub"
 version = "0.10.1"
 keywords = ["cryptography", "jubjub", "zk-snarks", "ecc", "elliptic-curve"]
 categories =["algorithms", "cryptography", "science"]
-edition = "2018"
+edition = "2021"
 exclude = [".github/workflows/ci.yml", "github/workflows/rust.yml",
 ".gitignore", 
 ]
