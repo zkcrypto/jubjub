@@ -248,16 +248,8 @@ impl Neg for JubJubExtended {
 }
 
 impl From<JubJubAffine> for JubJubExtended {
-    /// Constructs an extended point (with `Z = 1`) from
-    /// an affine point using the map `(x, y) => (x, y, 1, x, y)`.
     fn from(affine: JubJubAffine) -> JubJubExtended {
-        JubJubExtended {
-            x: affine.x,
-            y: affine.y,
-            z: BlsScalar::one(),
-            t1: affine.x,
-            t2: affine.y,
-        }
+        Self::from_affine(affine)
     }
 }
 
@@ -573,12 +565,12 @@ impl JubJubAffine {
     }
 
     /// Returns the `x`-coordinate of this point.
-    pub fn get_x(&self) -> BlsScalar {
+    pub const fn get_x(&self) -> BlsScalar {
         self.x
     }
 
     /// Returns the `y`-coordinate of this point.
-    pub fn get_y(&self) -> BlsScalar {
+    pub const fn get_y(&self) -> BlsScalar {
         self.y
     }
 
@@ -614,28 +606,51 @@ impl JubJubAffine {
 }
 
 impl JubJubExtended {
+    /// Constructs an extended point (with `Z = 1`) from
+    /// an affine point using the map `(x, y) => (x, y, 1, x, y)`.
+    pub const fn from_affine(affine: JubJubAffine) -> Self {
+        Self::from_raw_unchecked(
+            affine.x,
+            affine.y,
+            BlsScalar::one(),
+            affine.x,
+            affine.y,
+        )
+    }
+
+    /// Constructs an extended point from its raw internals
+    pub const fn from_raw_unchecked(
+        x: BlsScalar,
+        y: BlsScalar,
+        z: BlsScalar,
+        t1: BlsScalar,
+        t2: BlsScalar,
+    ) -> Self {
+        JubJubExtended { x, y, z, t1, t2 }
+    }
+
     /// Returns the `x`-coordinate of this point.
-    pub fn get_x(&self) -> BlsScalar {
+    pub const fn get_x(&self) -> BlsScalar {
         self.x
     }
 
     /// Returns the `y`-coordinate of this point.
-    pub fn get_y(&self) -> BlsScalar {
+    pub const fn get_y(&self) -> BlsScalar {
         self.y
     }
 
     /// Returns the `z`-coordinate of this point.
-    pub fn get_z(&self) -> BlsScalar {
+    pub const fn get_z(&self) -> BlsScalar {
         self.z
     }
 
     /// Returns the `t1`-coordinate of this point.
-    pub fn get_t1(&self) -> BlsScalar {
+    pub const fn get_t1(&self) -> BlsScalar {
         self.t1
     }
 
     /// Returns the `t2`-coordinate of this point.
-    pub fn get_t2(&self) -> BlsScalar {
+    pub const fn get_t2(&self) -> BlsScalar {
         self.t2
     }
 

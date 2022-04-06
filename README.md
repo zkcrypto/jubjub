@@ -12,7 +12,7 @@ This is a pure Rust implementation of the Jubjub elliptic curve group and its as
 * All operations are constant time unless explicitly noted.
 * This implementation does not require the Rust standard library.
 
-## [Documentation](https://docs.rs/jubjub)
+## [Documentation](https://docs.rs/dusk-jubjub/)
 
 ## Curve Description
 

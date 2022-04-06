@@ -1,5 +1,8 @@
 # Unreleased
 
+### Add
+- Add `const` directive to JubJubExtended. [#93](https://github.com/dusk-network/jubjub/issues/93)
+
 # 0.10.1
 ### Fix
 - Fix ZZIP-216 bug with neg identity encoding. [#82](https://github.com/dusk-network/jubjub/issues/82)
