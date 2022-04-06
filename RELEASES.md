@@ -1,5 +1,6 @@
 # Unreleased
 
+# 0.11.1
 ### Add
 - Add `const` directive to JubJubExtended. [#93](https://github.com/dusk-network/jubjub/issues/93)
 
