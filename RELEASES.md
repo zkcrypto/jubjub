@@ -1,3 +1,6 @@
+## Changed
+- Bumped MSRV to `1.56.0`
+
 # 0.8.0
 ## Added
 - `jubjub::Base`, as an alias for `jubjub::Fq`.
