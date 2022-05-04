@@ -1,3 +1,9 @@
+# 0.9.0
+
+## Changed
+- Bumped MSRV to `1.56.0`
+- Bumped dependencies to `bls12_381 0.7`, `ff 0.12`, `group 0.12`, `bitvec 1.0`.
+
 # 0.8.0
 ## Added
 - `jubjub::Base`, as an alias for `jubjub::Fq`.
