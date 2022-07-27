@@ -3,6 +3,9 @@ use crate::{JubJubAffine, JubJubExtended, JubJubScalar};
 use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 use dusk_bytes::{DeserializableSlice, Error as BytesError, Serializable};
 
+#[cfg(feature = "rkyv-impl")]
+use rkyv::{Archive, Deserialize, Serialize};
+
 /// Tuple for assymetric encryption using ElGamal algorithm.
 ///
 /// ## Example
@@ -65,6 +68,7 @@ use dusk_bytes::{DeserializableSlice, Error as BytesError, Serializable};
 /// Being `E` the encrypt and `D` the decrypt functions, here follows an
 /// example: `D{E[x * (a + b)]} == D{x * [E(a) + E(b)]}`
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 pub struct ElgamalCipher {
     gamma: JubJubExtended,
     delta: JubJubExtended,

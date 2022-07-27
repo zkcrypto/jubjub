@@ -44,6 +44,9 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use dusk_bytes::{Error as BytesError, Serializable};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
+#[cfg(feature = "rkyv-impl")]
+use rkyv::{Archive, Deserialize, Serialize};
+
 #[macro_use]
 mod util;
 mod fr;
@@ -68,6 +71,7 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 /// coordinates.
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "canon", derive(Canon))]
+#[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 pub struct JubJubAffine {
     x: BlsScalar,
     y: BlsScalar,
@@ -191,6 +195,7 @@ pub const GENERATOR_NUMS_EXTENDED: JubJubExtended = JubJubExtended {
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "canon", derive(Canon))]
+#[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 pub struct JubJubExtended {
     x: BlsScalar,
     y: BlsScalar,
@@ -281,6 +286,7 @@ impl From<JubJubExtended> for JubJubAffine {
 /// in the form `(y + x, y - x, x * y * 2d)`. This can be added to an
 /// [`JubJubExtended`](crate::JubJubExtended).
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 pub struct AffineNielsPoint {
     y_plus_x: BlsScalar,
     y_minus_x: BlsScalar,
@@ -362,6 +368,7 @@ impl ConditionallySelectable for AffineNielsPoint {
 /// This is a pre-processed version of an extended point `(X, Y, Z, T1, T2)`
 /// in the form `(Y + X, Y - X, Z, T1 * T2 * 2d)`.
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 pub struct ExtendedNielsPoint {
     y_plus_x: BlsScalar,
     y_minus_x: BlsScalar,
