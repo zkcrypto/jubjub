@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `rkyv` implementations on structures [#95]
 
+## Changed
+
+- Update `dusk-bls12_381` to version `0.10`
+
 ## [0.11.1] - 2022-04-06
 
 ### Added
