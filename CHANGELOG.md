@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `rkyv` implementations on structures
+- Add `rkyv` implementations on structures [#95]
 
 ## [0.11.1] - 2022-04-06
 
@@ -165,6 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Initial fork from [`zkcrypto/jubjub`]
 
+[#95]: https://github.com/dusk-network/jubjub/issues/95
 [#93]: https://github.com/dusk-network/jubjub/issues/93
 [#82]: https://github.com/dusk-network/jubjub/issues/82
 [#78]: https://github.com/dusk-network/jubjub/issues/78
