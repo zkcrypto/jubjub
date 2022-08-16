@@ -15,6 +15,8 @@ use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "rkyv-impl")]
+use bytecheck::CheckBytes;
+#[cfg(feature = "rkyv-impl")]
 use rkyv::{Archive, Deserialize, Serialize};
 
 use crate::util::{adc, mac, sbb};
@@ -28,6 +30,7 @@ use crate::BlsScalar;
 #[derive(Clone, Copy, Eq)]
 #[cfg_attr(feature = "canon", derive(Canon))]
 #[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
+#[cfg_attr(feature = "rkyv-impl", archive_attr(derive(CheckBytes)))]
 pub struct Fr(pub(crate) [u64; 4]);
 
 impl fmt::Debug for Fr {

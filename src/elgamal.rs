@@ -4,6 +4,8 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 use dusk_bytes::{DeserializableSlice, Error as BytesError, Serializable};
 
 #[cfg(feature = "rkyv-impl")]
+use bytecheck::CheckBytes;
+#[cfg(feature = "rkyv-impl")]
 use rkyv::{Archive, Deserialize, Serialize};
 
 /// Tuple for assymetric encryption using ElGamal algorithm.
@@ -69,6 +71,7 @@ use rkyv::{Archive, Deserialize, Serialize};
 /// example: `D{E[x * (a + b)]} == D{x * [E(a) + E(b)]}`
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
+#[cfg_attr(feature = "rkyv-impl", archive_attr(derive(CheckBytes)))]
 pub struct ElgamalCipher {
     gamma: JubJubExtended,
     delta: JubJubExtended,
