@@ -10,7 +10,7 @@ homepage = "https://github.com/dusk-network/jubjub"
 license = "MIT/Apache-2.0"
 name = "dusk-jubjub"
 repository = "https://github.com/dusk-network/jubjub"
-version = "0.12.0-rc.1"
+version = "0.12.0"
 keywords = ["cryptography", "jubjub", "zk-snarks", "ecc", "elliptic-curve"]
 categories =["algorithms", "cryptography", "science", "no-std"]
 edition = "2021"
@@ -20,7 +20,7 @@ exclude = [".github/workflows/ci.yml", "github/workflows/rust.yml",
 
 [dependencies]
 dusk-bytes = "0.1"
-dusk-bls12_381 = {version="0.11.0-rc", default-features=false}
+dusk-bls12_381 = {version="0.11", default-features=false}
 subtle = {version="^2.3", default-features = false}
 rand_core = {version = "0.6", default-features=false}
 canonical = {version = "0.7", optional = true}
