@@ -54,6 +54,7 @@ fn test_additive_inverse() {
     }
 }
 
+#[allow(clippy::eq_op)]
 #[test]
 fn test_additive_commutativity() {
     let mut rng = new_rng();

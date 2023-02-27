@@ -288,7 +288,7 @@ impl AffineNielsPoint {
             .map(|bit| Choice::from(if *bit { 1 } else { 0 }))
         {
             acc = acc.double();
-            acc += AffineNielsPoint::conditional_select(&zero, &self, bit);
+            acc += AffineNielsPoint::conditional_select(&zero, self, bit);
         }
 
         acc
@@ -372,7 +372,7 @@ impl ExtendedNielsPoint {
             .skip(4)
         {
             acc = acc.double();
-            acc += ExtendedNielsPoint::conditional_select(&zero, &self, bit);
+            acc += ExtendedNielsPoint::conditional_select(&zero, self, bit);
         }
 
         acc
@@ -852,8 +852,8 @@ impl ExtendedPoint {
             let tmp = q.u;
 
             // Set the coordinates to the correct value
-            q.u = p.u * &tmp; // Multiply by 1/z
-            q.v = p.v * &tmp; // Multiply by 1/z
+            q.u = p.u * tmp; // Multiply by 1/z
+            q.v = p.v * tmp; // Multiply by 1/z
         }
     }
 
@@ -1081,7 +1081,7 @@ impl Default for ExtendedPoint {
 /// slice.
 ///
 /// This costs 5 multiplications per element, and a field inversion.
-pub fn batch_normalize<'a>(v: &'a mut [ExtendedPoint]) -> impl Iterator<Item = AffinePoint> + 'a {
+pub fn batch_normalize(v: &mut [ExtendedPoint]) -> impl Iterator<Item = AffinePoint> + '_ {
     // We use the `t1` field of `ExtendedPoint` for scratch space.
     BatchInverter::invert_with_internal_scratch(v, |p| &mut p.z, |p| &mut p.t1);
 
@@ -1193,7 +1193,7 @@ impl<'a, 'b> Add<&'b SubgroupPoint> for &'a ExtendedPoint {
 
     #[inline]
     fn add(self, other: &'b SubgroupPoint) -> ExtendedPoint {
-        self + &other.0
+        self + other.0
     }
 }
 
@@ -1202,7 +1202,7 @@ impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a ExtendedPoint {
 
     #[inline]
     fn sub(self, other: &'b SubgroupPoint) -> ExtendedPoint {
-        self - &other.0
+        self - other.0
     }
 }
 
@@ -1213,7 +1213,7 @@ impl<'a, 'b> Add<&'b SubgroupPoint> for &'a SubgroupPoint {
 
     #[inline]
     fn add(self, other: &'b SubgroupPoint) -> SubgroupPoint {
-        SubgroupPoint(self.0 + &other.0)
+        SubgroupPoint(self.0 + other.0)
     }
 }
 
@@ -1222,7 +1222,7 @@ impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a SubgroupPoint {
 
     #[inline]
     fn sub(self, other: &'b SubgroupPoint) -> SubgroupPoint {
-        SubgroupPoint(self.0 - &other.0)
+        SubgroupPoint(self.0 - other.0)
     }
 }
 
