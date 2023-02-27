@@ -1,3 +1,7 @@
+# Unreleased
+## Changed
+- Bumped dependencies to `bls12_381 0.8`, `ff 0.13`, `group 0.13`.
+
 # 0.9.0
 
 ## Changed

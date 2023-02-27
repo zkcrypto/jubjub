@@ -18,15 +18,15 @@ version = "1"
 default-features = false
 
 [dependencies.bls12_381]
-version = "0.7"
+version = "0.8"
 default-features = false
 
 [dependencies.ff]
-version = "0.12"
+version = "0.13"
 default-features = false
 
 [dependencies.group]
-version = "0.12"
+version = "0.13"
 default-features = false
 
 [dependencies.rand_core]
