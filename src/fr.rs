@@ -774,6 +774,7 @@ fn test_debug() {
     );
 }
 
+#[allow(clippy::eq_op)]
 #[test]
 fn test_equality() {
     assert_eq!(Fr::zero(), Fr::zero());
