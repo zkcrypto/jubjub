@@ -1,4 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
+use ff::Field;
 use jubjub::*;
 
 fn bench_add_assign(c: &mut Criterion) {

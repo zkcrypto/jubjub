@@ -97,6 +97,14 @@ const MODULUS_LIMBS_32: [u32; 8] = [
 // The number of bits needed to represent the modulus.
 const MODULUS_BITS: u32 = 252;
 
+/// 2^-1
+const TWO_INV: Fr = Fr([
+    0x7b47_8d09_4846_9a48,
+    0xccbe_fb61_99bf_7be9,
+    0xccc6_27f7_f65e_27fa,
+    0x0c12_58ac_d662_82b7,
+]);
+
 // GENERATOR = 6 (multiplicative generator of r-1 order, that is also quadratic nonresidue)
 const GENERATOR: Fr = Fr([
     0x720b_1b19_d49e_a8f1,
@@ -114,6 +122,18 @@ const ROOT_OF_UNITY: Fr = Fr([
     0xb352_4a64_6611_2932,
     0x7342_2612_15ac_260b,
     0x04d6_b87b_1da2_59e2,
+]);
+
+/// ROOT_OF_UNITY^-1 (which is equal to ROOT_OF_UNITY because S = 1).
+const ROOT_OF_UNITY_INV: Fr = ROOT_OF_UNITY;
+
+/// GENERATOR^{2^s} where t * 2^s + 1 = q with t odd.
+/// In other words, this is a t root of unity.
+const DELTA: Fr = Fr([
+    0x994f_5ac0_c8e4_1613,
+    0x3bb7_3163_0bbf_0b84,
+    0x1df0_a482_0371_a563,
+    0x0e30_3e96_f8cb_47bd,
 ]);
 
 impl<'a> Neg for &'a Fr {
@@ -165,6 +185,30 @@ impl<'a, 'b> Mul<&'b Fr> for &'a Fr {
 
 impl_binops_additive!(Fr, Fr);
 impl_binops_multiplicative!(Fr, Fr);
+
+impl<T> core::iter::Sum<T> for Fr
+where
+    T: core::borrow::Borrow<Fr>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::zero(), |acc, item| acc + item.borrow())
+    }
+}
+
+impl<T> core::iter::Product<T> for Fr
+where
+    T: core::borrow::Borrow<Fr>,
+{
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::one(), |acc, item| acc * item.borrow())
+    }
+}
 
 /// INV = -(r^{-1} mod 2^64) mod 2^64
 const INV: u64 = 0x1ba3_a358_ef78_8ef9;
@@ -634,18 +678,13 @@ impl<'a> From<&'a Fr> for [u8; 32] {
 }
 
 impl Field for Fr {
+    const ZERO: Self = Self::zero();
+    const ONE: Self = Self::one();
+
     fn random(mut rng: impl RngCore) -> Self {
         let mut buf = [0; 64];
         rng.fill_bytes(&mut buf);
         Self::from_bytes_wide(&buf)
-    }
-
-    fn zero() -> Self {
-        Self::zero()
-    }
-
-    fn one() -> Self {
-        Self::one()
     }
 
     #[must_use]
@@ -660,6 +699,10 @@ impl Field for Fr {
 
     fn invert(&self) -> CtOption<Self> {
         self.invert()
+    }
+
+    fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
+        ff::helpers::sqrt_ratio_generic(num, div)
     }
 
     fn sqrt(&self) -> CtOption<Self> {
@@ -682,18 +725,16 @@ impl PrimeField for Fr {
         Choice::from(self.to_bytes()[0] & 1)
     }
 
+    const MODULUS: &'static str =
+        "0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7";
     const NUM_BITS: u32 = MODULUS_BITS;
     const CAPACITY: u32 = Self::NUM_BITS - 1;
-
-    fn multiplicative_generator() -> Self {
-        GENERATOR
-    }
-
+    const TWO_INV: Self = TWO_INV;
+    const MULTIPLICATIVE_GENERATOR: Self = GENERATOR;
     const S: u32 = S;
-
-    fn root_of_unity() -> Self {
-        ROOT_OF_UNITY
-    }
+    const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
+    const ROOT_OF_UNITY_INV: Self = ROOT_OF_UNITY_INV;
+    const DELTA: Self = DELTA;
 }
 
 #[cfg(all(feature = "bits", not(target_pointer_width = "64")))]
@@ -741,6 +782,32 @@ impl PrimeFieldBits for Fr {
         #[cfg(target_pointer_width = "64")]
         FieldBits::new(MODULUS.0)
     }
+}
+
+#[test]
+fn test_constants() {
+    assert_eq!(
+        Fr::MODULUS,
+        "0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7",
+    );
+
+    assert_eq!(Fr::from(2) * Fr::TWO_INV, Fr::ONE);
+
+    assert_eq!(Fr::ROOT_OF_UNITY * Fr::ROOT_OF_UNITY_INV, Fr::ONE);
+
+    // ROOT_OF_UNITY^{2^s} mod m == 1
+    assert_eq!(Fr::ROOT_OF_UNITY.pow(&[1u64 << Fr::S, 0, 0, 0]), Fr::ONE);
+
+    // DELTA^{t} mod m == 1
+    assert_eq!(
+        Fr::DELTA.pow(&[
+            0x684b_872f_6b7b_965b,
+            0x5334_1049_e664_0841,
+            0x8333_9d80_809a_1d80,
+            0x073e_da75_3299_d7d4,
+        ]),
+        Fr::ONE,
+    );
 }
 
 #[test]
