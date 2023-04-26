@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add more tests for wnaf computation [#104]
+
 ## [0.12.1] - 2022-10-19
 
 ### Added
@@ -178,6 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Initial fork from [`zkcrypto/jubjub`]
 
+[#104]: https://github.com/dusk-network/jubjub/issues/104
 [#95]: https://github.com/dusk-network/jubjub/issues/95
 [#93]: https://github.com/dusk-network/jubjub/issues/93
 [#82]: https://github.com/dusk-network/jubjub/issues/82

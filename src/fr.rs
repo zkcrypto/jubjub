@@ -300,7 +300,7 @@ impl Fr {
         self.add(self)
     }
 
-    /// SHR impl
+    /// SHR impl: shifts bits n times, equivalent to division by 2^n.
     #[inline]
     pub fn divn(&mut self, mut n: u32) {
         if n >= 256 {
@@ -743,8 +743,15 @@ impl Fr {
         }
     }
 
-    /// Computes the windowed-non-adjacent for a
-    /// given an element in the JubJub Scalar field.
+    /// Computes the windowed-non-adjacent form for a given an element in the
+    /// JubJub Scalar field.
+    ///
+    /// The wnaf of a scalar is its breakdown:
+    ///     scalar = sum_i{wnaf[i]*2^i}
+    /// where for all i:
+    ///     -2^{w-1} < wnaf[i] < 2^{w-1}
+    /// and
+    ///     wnaf[i] * wnaf[i+1] = 0
     pub fn compute_windowed_naf(&self, width: u8) -> [i8; 256] {
         let mut k = self.reduce();
         let mut i = 0;
@@ -1198,14 +1205,55 @@ fn test_from_raw() {
 }
 
 #[test]
-fn w_naf() {
-    let fr = Fr::from(1122334455u64);
-    let naf3_fr = [
+fn w_naf_3() {
+    let scalar = Fr::from(1122334455u64);
+    let w = 3;
+    // -1 - 1*2^3 - 1*2^8 - 1*2^11 + 3*2^15 + 1*2^18 - 1*2^21 + 3*2^24 + 1*2^30
+    let expected_result = [
         -1i8, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0, 0,
         -1, 0, 0, 3, 0, 0, 0, 0, 0, 1,
     ];
-    let computed = fr.compute_windowed_naf(3);
-    let mut buf = [0i8; 31];
-    buf.copy_from_slice(&computed[0..31]);
-    assert!(&naf3_fr[..] == &computed[..31]);
+
+    let mut expected = [0i8; 256];
+    expected[..expected_result.len()].copy_from_slice(&expected_result);
+
+    let computed = scalar.compute_windowed_naf(w);
+
+    assert_eq!(expected, computed);
+}
+
+#[test]
+fn w_naf_4() {
+    let scalar = Fr::from(58235u64);
+    let w = 4;
+    // -5 + 7*2^7 + 7*2^13
+    let expected_result = [-5, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 7];
+
+    let mut expected = [0i8; 256];
+    expected[..expected_result.len()].copy_from_slice(&expected_result);
+
+    let computed = scalar.compute_windowed_naf(w);
+
+    assert_eq!(expected, computed);
+}
+
+#[test]
+fn w_naf_2() {
+    let scalar = -Fr::one();
+    let w = 2;
+    let two = Fr::from(2u64);
+
+    let wnaf = scalar.compute_windowed_naf(w);
+
+    let recomputed = wnaf.iter().enumerate().fold(Fr::zero(), |acc, (i, x)| {
+        if *x > 0 {
+            acc + Fr::from(*x as u64) * two.pow(&[(i as u64), 0u64, 0u64, 0u64])
+        } else if *x < 0 {
+            acc - Fr::from(-(*x) as u64)
+                * two.pow(&[(i as u64), 0u64, 0u64, 0u64])
+        } else {
+            acc
+        }
+    });
+    assert_eq!(scalar, recomputed);
 }
