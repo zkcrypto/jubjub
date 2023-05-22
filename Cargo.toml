@@ -23,8 +23,6 @@ dusk-bytes = "0.1"
 dusk-bls12_381 = {version="0.11", default-features=false}
 subtle = {version="^2.3", default-features = false}
 rand_core = {version = "0.6", default-features=false}
-canonical = {version = "0.7", optional = true}
-canonical_derive = {version = "0.7", optional = true}
 rkyv = {version = "0.7", optional = true, default-features = false}
 bytecheck = {version = "0.6", optional=true, default-features = false}
 
@@ -35,5 +33,4 @@ blake2 = "0.9"
 [features]
 default = ["std"]
 std = ["dusk-bls12_381/default"]
-canon = ["canonical", "canonical_derive", "dusk-bls12_381/canon"]
 rkyv-impl = ["bytecheck", "dusk-bls12_381/rkyv-impl", "rkyv"]

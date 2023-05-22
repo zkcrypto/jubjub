@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Remove `canonical` and `canonical_derive` dependency [#109]
+
 ### Added
 
 - Add more tests for wnaf computation [#104]
@@ -182,6 +186,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Initial fork from [`zkcrypto/jubjub`]
 
+[#109]: https://github.com/dusk-network/jubjub/issues/109
 [#104]: https://github.com/dusk-network/jubjub/issues/104
 [#95]: https://github.com/dusk-network/jubjub/issues/95
 [#93]: https://github.com/dusk-network/jubjub/issues/93
