@@ -43,19 +43,6 @@ jobs:
             command: build
             args: --release --no-default-features --target thumbv6m-none-eabi
   
-  test_nightly_canon_feature:
-      name: Nightly tests canon
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v2
-        - uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal
-        - uses: actions-rs/cargo@v1
-          with:
-            command: test
-            args: --release --no-default-features --features canon
-
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest

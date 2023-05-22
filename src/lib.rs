@@ -38,8 +38,6 @@
 #[macro_use]
 extern crate std;
 
-#[cfg(feature = "canon")]
-use canonical_derive::Canon;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use dusk_bytes::{Error as BytesError, Serializable};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -72,7 +70,6 @@ const FR_MODULUS_BYTES: [u8; 32] = [
 /// This represents a Jubjub point in the affine `(x, y)`
 /// coordinates.
 #[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "canon", derive(Canon))]
 #[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 #[cfg_attr(feature = "rkyv-impl", archive_attr(derive(CheckBytes)))]
 pub struct JubJubAffine {
@@ -197,7 +194,6 @@ pub const GENERATOR_NUMS_EXTENDED: JubJubExtended = JubJubExtended {
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
 #[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "canon", derive(Canon))]
 #[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 #[cfg_attr(feature = "rkyv-impl", archive_attr(derive(CheckBytes)))]
 pub struct JubJubExtended {

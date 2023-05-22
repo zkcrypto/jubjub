@@ -2,8 +2,6 @@
 //! $\mathbb{F}_r$ where `r =
 //! 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
 
-#[cfg(feature = "canon")]
-use canonical_derive::Canon;
 use core::cmp::{Ord, Ordering, PartialOrd};
 use core::convert::TryInto;
 use core::fmt;
@@ -28,7 +26,6 @@ use crate::BlsScalar;
 // integers in little-endian order. Elements of Fr are always in
 // Montgomery form; i.e., Fr(a) = aR mod r, with R = 2^256.
 #[derive(Clone, Copy, Eq)]
-#[cfg_attr(feature = "canon", derive(Canon))]
 #[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
 #[cfg_attr(feature = "rkyv-impl", archive_attr(derive(CheckBytes)))]
 pub struct Fr(pub(crate) [u64; 4]);
