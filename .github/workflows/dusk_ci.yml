@@ -1,58 +1,25 @@
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - master
 
 name: Continuous integration
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
+  code_analysis:
+    name: Code Analysis
+    uses: dusk-network/.github/.github/workflows/code-analysis.yml@main
+    with:
+      clippy_default: false
+      clippy_args: '--release -- -A warnings'
 
-  test_nightly:
-      name: Nightly tests std
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v2
-        - uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal
-        - uses: actions-rs/cargo@v1
-          with:
-            command: test
-            args: --release
+  test_nightly_std:
+    name: Nightly tests std
+    uses: dusk-network/.github/.github/workflows/run-tests.yml@main
 
-  build_nightly_nostd:
-      name: Nightly build no_std
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v2
-        - uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal  
-        # ARM contains no std lib. Just core and alloc.
-        - run: rustup target add thumbv6m-none-eabi
-        - uses: actions-rs/cargo@v1
-          with:
-            command: build
-            args: --release --no-default-features --target thumbv6m-none-eabi
-  
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+  test_nightly_no_std:
+    name: Nightly tests no_std
+    uses: dusk-network/.github/.github/workflows/run-tests.yml@main
+    with:
+      test_flags: --no-default-features 
