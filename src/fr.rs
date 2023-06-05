@@ -2,23 +2,18 @@
 //! $\mathbb{F}_r$ where `r =
 //! 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7`
 
-use core::cmp::{Ord, Ordering, PartialOrd};
 use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-use core::ops::{Index, IndexMut};
-use dusk_bytes::{Error as BytesError, Serializable};
-use rand_core::{CryptoRng, RngCore};
 
+use ff::{Field, PrimeField};
+use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
-#[cfg(feature = "rkyv-impl")]
-use bytecheck::CheckBytes;
-#[cfg(feature = "rkyv-impl")]
-use rkyv::{Archive, Deserialize, Serialize};
+#[cfg(feature = "bits")]
+use ff::{FieldBits, PrimeFieldBits};
 
 use crate::util::{adc, mac, sbb};
-use crate::BlsScalar;
 
 /// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub
 /// elliptic curve construction.
@@ -26,8 +21,11 @@ use crate::BlsScalar;
 // integers in little-endian order. Elements of Fr are always in
 // Montgomery form; i.e., Fr(a) = aR mod r, with R = 2^256.
 #[derive(Clone, Copy, Eq)]
-#[cfg_attr(feature = "rkyv-impl", derive(Archive, Serialize, Deserialize))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(derive(CheckBytes)))]
+#[cfg_attr(
+    feature = "rkyv-impl",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub struct Fr(pub(crate) [u64; 4]);
 
 impl fmt::Debug for Fr {
@@ -41,48 +39,31 @@ impl fmt::Debug for Fr {
     }
 }
 
+impl fmt::Display for Fr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl From<u64> for Fr {
     fn from(val: u64) -> Fr {
         Fr([val, 0, 0, 0]) * R2
     }
 }
 
-impl From<i8> for Fr {
-    fn from(val: i8) -> Fr {
-        match (val >= 0, val < 0) {
-            (true, false) => Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
-            (false, true) => -Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
-            (_, _) => unreachable!(),
-        }
-    }
-}
-
-impl From<Fr> for BlsScalar {
-    fn from(scalar: Fr) -> BlsScalar {
-        let bls_scalar = BlsScalar::from_bytes(&scalar.to_bytes());
-
-        // The order of a JubJub's Scalar field is shorter than a BLS Scalar,
-        // so convert any jubjub scalar to a BLS' Scalar should always be
-        // safe.
-        assert!(
-            bls_scalar.is_ok(),
-            "Failed to convert a Scalar from JubJub to BLS"
-        );
-
-        bls_scalar.unwrap()
-    }
-}
-
 impl ConstantTimeEq for Fr {
     fn ct_eq(&self, other: &Self) -> Choice {
-        self.0.ct_eq(&other.0)
+        self.0[0].ct_eq(&other.0[0])
+            & self.0[1].ct_eq(&other.0[1])
+            & self.0[2].ct_eq(&other.0[2])
+            & self.0[3].ct_eq(&other.0[3])
     }
 }
 
 impl PartialEq for Fr {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other).into()
+        bool::from(self.ct_eq(other))
     }
 }
 
@@ -97,47 +78,69 @@ impl ConditionallySelectable for Fr {
     }
 }
 
-impl Index<usize> for Fr {
-    type Output = u64;
-    fn index(&self, _index: usize) -> &u64 {
-        &(self.0[_index])
-    }
-}
-
-impl IndexMut<usize> for Fr {
-    fn index_mut(&mut self, _index: usize) -> &mut u64 {
-        &mut (self.0[_index])
-    }
-}
-
-impl PartialOrd for Fr {
-    fn partial_cmp(&self, other: &Fr) -> Option<Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
-impl Ord for Fr {
-    fn cmp(&self, other: &Self) -> Ordering {
-        let a = self;
-        let other = other;
-        for i in (0..4).rev() {
-            if a[i] > other[i] {
-                return Ordering::Greater;
-            } else if a[i] < other[i] {
-                return Ordering::Less;
-            }
-        }
-        Ordering::Equal
-    }
-}
-
 /// Constant representing the modulus
 /// r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7
 pub const MODULUS: Fr = Fr([
-    0xd0970e5ed6f72cb7,
-    0xa6682093ccc81082,
-    0x06673b0101343b00,
-    0x0e7db4ea6533afa9,
+    0xd097_0e5e_d6f7_2cb7,
+    0xa668_2093_ccc8_1082,
+    0x0667_3b01_0134_3b00,
+    0x0e7d_b4ea_6533_afa9,
+]);
+
+/// The modulus as u32 limbs.
+#[cfg(not(target_pointer_width = "64"))]
+const MODULUS_LIMBS_32: [u32; 8] = [
+    0xd6f7_2cb7,
+    0xd097_0e5e,
+    0xccc8_1082,
+    0xa668_2093,
+    0x0134_3b00,
+    0x0667_3b01,
+    0x6533_afa9,
+    0x0e7d_b4ea,
+];
+
+// The number of bits needed to represent the modulus.
+const MODULUS_BITS: u32 = 252;
+
+/// 2^-1
+const TWO_INV: Fr = Fr([
+    0x7b47_8d09_4846_9a48,
+    0xccbe_fb61_99bf_7be9,
+    0xccc6_27f7_f65e_27fa,
+    0x0c12_58ac_d662_82b7,
+]);
+
+// GENERATOR = 6 (multiplicative generator of r-1 order, that is also quadratic
+// nonresidue)
+const GENERATOR: Fr = Fr([
+    0x720b_1b19_d49e_a8f1,
+    0xbf4a_a361_01f1_3a58,
+    0x5fa8_cc96_8193_ccbb,
+    0x0e70_cbdc_7dcc_f3ac,
+]);
+
+// 2^S * t = MODULUS - 1 with t odd
+const S: u32 = 1;
+
+// 2^S root of unity computed by GENERATOR^t
+const ROOT_OF_UNITY: Fr = Fr([
+    0xaa9f_02ab_1d61_24de,
+    0xb352_4a64_6611_2932,
+    0x7342_2612_15ac_260b,
+    0x04d6_b87b_1da2_59e2,
+]);
+
+/// ROOT_OF_UNITY^-1 (which is equal to ROOT_OF_UNITY because S = 1).
+const ROOT_OF_UNITY_INV: Fr = ROOT_OF_UNITY;
+
+/// GENERATOR^{2^s} where t * 2^s + 1 = q with t odd.
+/// In other words, this is a t root of unity.
+const DELTA: Fr = Fr([
+    0x994f_5ac0_c8e4_1613,
+    0x3bb7_3163_0bbf_0b84,
+    0x1df0_a482_0371_a563,
+    0x0e30_3e96_f8cb_47bd,
 ]);
 
 impl<'a> Neg for &'a Fr {
@@ -190,91 +193,60 @@ impl<'a, 'b> Mul<&'b Fr> for &'a Fr {
 impl_binops_additive!(Fr, Fr);
 impl_binops_multiplicative!(Fr, Fr);
 
+impl<T> core::iter::Sum<T> for Fr
+where
+    T: core::borrow::Borrow<Fr>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::zero(), |acc, item| acc + item.borrow())
+    }
+}
+
+impl<T> core::iter::Product<T> for Fr
+where
+    T: core::borrow::Borrow<Fr>,
+{
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::one(), |acc, item| acc * item.borrow())
+    }
+}
+
 /// INV = -(r^{-1} mod 2^64) mod 2^64
-const INV: u64 = 0x1ba3a358ef788ef9;
+const INV: u64 = 0x1ba3_a358_ef78_8ef9;
 
 /// R = 2^256 mod r
 const R: Fr = Fr([
-    0x25f80bb3b99607d9,
-    0xf315d62f66b6e750,
-    0x932514eeeb8814f4,
-    0x09a6fc6f479155c6,
+    0x25f8_0bb3_b996_07d9,
+    0xf315_d62f_66b6_e750,
+    0x9325_14ee_eb88_14f4,
+    0x09a6_fc6f_4791_55c6,
 ]);
 
 /// R^2 = 2^512 mod r
 const R2: Fr = Fr([
-    0x67719aa495e57731,
-    0x51b0cef09ce3fc26,
-    0x69dab7fac026e9a5,
-    0x04f6547b8d127688,
+    0x6771_9aa4_95e5_7731,
+    0x51b0_cef0_9ce3_fc26,
+    0x69da_b7fa_c026_e9a5,
+    0x04f6_547b_8d12_7688,
 ]);
 
 /// R^3 = 2^768 mod r
 const R3: Fr = Fr([
-    0xe0d6c6563d830544,
-    0x323e3883598d0f85,
-    0xf0fea3004c2e2ba8,
-    0x05874f84946737ec,
+    0xe0d6_c656_3d83_0544,
+    0x323e_3883_598d_0f85,
+    0xf0fe_a300_4c2e_2ba8,
+    0x0587_4f84_9467_37ec,
 ]);
 
 impl Default for Fr {
     fn default() -> Self {
         Self::zero()
-    }
-}
-
-impl Serializable<32> for Fr {
-    type Error = BytesError;
-
-    /// Converts an element of `Fr` into a byte representation in
-    /// little-endian byte order.
-    fn to_bytes(&self) -> [u8; Self::SIZE] {
-        // Turn into canonical form by computing
-        // (a.R) / R = a
-        let tmp = Fr::montgomery_reduce(
-            self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0,
-        );
-
-        let mut res = [0; Self::SIZE];
-        res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
-        res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
-        res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
-        res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
-
-        res
-    }
-
-    /// Attempts to convert a little-endian byte representation of
-    /// a field element into an element of `Fr`, failing if the input
-    /// is not canonical (is not smaller than r).
-    fn from_bytes(bytes: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
-        let mut tmp = Fr([0, 0, 0, 0]);
-
-        tmp.0[0] = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
-        tmp.0[1] = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
-        tmp.0[2] = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
-        tmp.0[3] = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
-
-        // Try to subtract the modulus
-        let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
-        let (_, borrow) = sbb(tmp.0[1], MODULUS.0[1], borrow);
-        let (_, borrow) = sbb(tmp.0[2], MODULUS.0[2], borrow);
-        let (_, borrow) = sbb(tmp.0[3], MODULUS.0[3], borrow);
-
-        // If the element is smaller than MODULUS then the
-        // subtraction will underflow, producing a borrow value
-        // of 0xffff...ffff. Otherwise, it'll be zero.
-        let is_some = (borrow as u8) & 1;
-
-        if is_some == 0 {
-            return Err(BytesError::InvalidData);
-        }
-
-        // Convert to Montgomery form by computing
-        // (a.R^0 * R^2) / R = a.R
-        tmp *= &R2;
-
-        Ok(tmp)
     }
 }
 
@@ -297,31 +269,51 @@ impl Fr {
         self.add(self)
     }
 
-    /// SHR impl: shifts bits n times, equivalent to division by 2^n.
-    #[inline]
-    pub fn divn(&mut self, mut n: u32) {
-        if n >= 256 {
-            *self = Self::from(0u64);
-            return;
-        }
+    /// Attempts to convert a little-endian byte representation of
+    /// a field element into an element of `Fr`, failing if the input
+    /// is not canonical (is not smaller than r).
+    pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Fr> {
+        let mut tmp = Fr([0, 0, 0, 0]);
 
-        while n >= 64 {
-            let mut t = 0;
-            for i in self.0.iter_mut().rev() {
-                core::mem::swap(&mut t, i);
-            }
-            n -= 64;
-        }
+        tmp.0[0] = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
+        tmp.0[1] = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+        tmp.0[2] = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
+        tmp.0[3] = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
 
-        if n > 0 {
-            let mut t = 0;
-            for i in self.0.iter_mut().rev() {
-                let t2 = *i << (64 - n);
-                *i >>= n;
-                *i |= t;
-                t = t2;
-            }
-        }
+        // Try to subtract the modulus
+        let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
+        let (_, borrow) = sbb(tmp.0[1], MODULUS.0[1], borrow);
+        let (_, borrow) = sbb(tmp.0[2], MODULUS.0[2], borrow);
+        let (_, borrow) = sbb(tmp.0[3], MODULUS.0[3], borrow);
+
+        // If the element is smaller than MODULUS then the
+        // subtraction will underflow, producing a borrow value
+        // of 0xffff...ffff. Otherwise, it'll be zero.
+        let is_some = (borrow as u8) & 1;
+
+        // Convert to Montgomery form by computing
+        // (a.R^0 * R^2) / R = a.R
+        tmp *= &R2;
+
+        CtOption::new(tmp, Choice::from(is_some))
+    }
+
+    /// Converts an element of `Fr` into a byte representation in
+    /// little-endian byte order.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        // Turn into canonical form by computing
+        // (a.R) / R = a
+        let tmp = Fr::montgomery_reduce(
+            self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0,
+        );
+
+        let mut res = [0; 32];
+        res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
+        res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
+        res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
+        res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
+
+        res
     }
 
     /// Converts a 512-bit little endian integer into
@@ -400,36 +392,22 @@ impl Fr {
         Fr::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
     }
 
-    /// Generate a valid Scalar choosen uniformly using user-
-    /// provided rng.
-    ///
-    /// By `rng` we mean any Rng that implements: `Rng` + `CryptoRng`.
-    pub fn random<T>(rand: &mut T) -> Fr
-    where
-        T: RngCore + CryptoRng,
-    {
-        let mut bytes = [0u8; 64];
-        rand.fill_bytes(&mut bytes);
-
-        Fr::from_bytes_wide(&bytes)
-    }
-
     /// Computes the square root of this element, if it exists.
     pub fn sqrt(&self) -> CtOption<Self> {
         // Because r = 3 (mod 4)
         // sqrt can be done with only one exponentiation,
         // via the computation of  self^((r + 1) // 4) (mod r)
         let sqrt = self.pow_vartime(&[
-            0xb425c397b5bdcb2e,
-            0x299a0824f3320420,
-            0x4199cec0404d0ec0,
-            0x039f6d3a994cebea,
+            0xb425_c397_b5bd_cb2e,
+            0x299a_0824_f332_0420,
+            0x4199_cec0_404d_0ec0,
+            0x039f_6d3a_994c_ebea,
         ]);
 
         CtOption::new(
             sqrt,
-            (&sqrt * &sqrt).ct_eq(self), /* Only return Some if it's the
-                                          * square root. */
+            (sqrt * sqrt).ct_eq(self), /* Only return Some if it's the
+                                        * square root. */
         )
     }
 
@@ -480,25 +458,25 @@ impl Fr {
         // found using https://github.com/kwantam/addchain
         let mut t1 = self.square();
         let mut t0 = t1.square();
-        let mut t3 = t0 * &t1;
+        let mut t3 = t0 * t1;
         let t6 = t3 * self;
-        let t7 = t6 * &t1;
-        let t12 = t7 * &t3;
-        let t13 = t12 * &t0;
-        let t16 = t12 * &t3;
-        let t2 = t13 * &t3;
-        let t15 = t16 * &t3;
-        let t19 = t2 * &t0;
-        let t9 = t15 * &t3;
-        let t18 = t9 * &t3;
-        let t14 = t18 * &t1;
-        let t4 = t18 * &t0;
-        let t8 = t18 * &t3;
-        let t17 = t14 * &t3;
-        let t11 = t8 * &t3;
-        t1 = t17 * &t3;
-        let t5 = t11 * &t3;
-        t3 = t5 * &t0;
+        let t7 = t6 * t1;
+        let t12 = t7 * t3;
+        let t13 = t12 * t0;
+        let t16 = t12 * t3;
+        let t2 = t13 * t3;
+        let t15 = t16 * t3;
+        let t19 = t2 * t0;
+        let t9 = t15 * t3;
+        let t18 = t9 * t3;
+        let t14 = t18 * t1;
+        let t4 = t18 * t0;
+        let t8 = t18 * t3;
+        let t17 = t14 * t3;
+        let t11 = t8 * t3;
+        t1 = t17 * t3;
+        let t5 = t11 * t3;
+        t3 = t5 * t0;
         t0 = t5.square();
         square_assign_multi(&mut t0, 5);
         t0.mul_assign(&t3);
@@ -575,6 +553,7 @@ impl Fr {
     }
 
     #[inline]
+    #[allow(clippy::too_many_arguments)]
     const fn montgomery_reduce(
         r0: u64,
         r1: u64,
@@ -700,81 +679,151 @@ impl Fr {
 
         Fr([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
     }
-    /// Reduces bit representation of numbers, such that
-    /// they can be evaluated in terms of the least significant bit.
-    pub fn reduce(&self) -> Self {
-        Fr::montgomery_reduce(
-            self.0[0], self.0[1], self.0[2], self.0[3], 0u64, 0u64, 0u64, 0u64,
-        )
-    }
+}
 
-    /// Evaluate if a `Scalar, from Fr` is even or not.
-    pub fn is_even(&self) -> bool {
-        self.0[0] % 2 == 0
-    }
-
-    /// Compute the result from `Scalar (mod 2^k)`.
-    ///
-    /// # Panics
-    ///
-    /// If the given k is > 32 (5 bits) as the value gets
-    /// greater than the limb.  
-    pub fn mod_2_pow_k(&self, k: u8) -> u8 {
-        (self.0[0] & ((1 << k) - 1)) as u8
-    }
-
-    /// Compute the result from `Scalar (mods k)`.
-    ///
-    /// # Panics
-    ///
-    /// If the given `k > 32 (5 bits)` || `k == 0` as the value gets
-    /// greater than the limb.   
-    pub fn mods_2_pow_k(&self, w: u8) -> i8 {
-        assert!(w < 32u8);
-        let modulus = self.mod_2_pow_k(w) as i8;
-        let two_pow_w_minus_one = 1i8 << (w - 1);
-
-        match modulus >= two_pow_w_minus_one {
-            false => modulus,
-            true => modulus - ((1u8 << w) as i8),
-        }
-    }
-
-    /// Computes the windowed-non-adjacent form for a given an element in the
-    /// JubJub Scalar field.
-    ///
-    /// The wnaf of a scalar is its breakdown:
-    ///     scalar = sum_i{wnaf[i]*2^i}
-    /// where for all i:
-    ///     -2^{w-1} < wnaf[i] < 2^{w-1}
-    /// and
-    ///     wnaf[i] * wnaf[i+1] = 0
-    pub fn compute_windowed_naf(&self, width: u8) -> [i8; 256] {
-        let mut k = self.reduce();
-        let mut i = 0;
-        let one = Fr::one().reduce();
-        let mut res = [0i8; 256];
-
-        while k >= one {
-            if !k.is_even() {
-                let ki = k.mods_2_pow_k(width);
-                res[i] = ki;
-                k = k - Fr::from(ki);
-            } else {
-                res[i] = 0i8;
-            };
-
-            k.divn(1u32);
-            i += 1;
-        }
-        res
+impl From<Fr> for [u8; 32] {
+    fn from(value: Fr) -> [u8; 32] {
+        value.to_bytes()
     }
 }
 
-impl<'a> From<&'a Fr> for [u8; Fr::SIZE] {
-    fn from(value: &'a Fr) -> [u8; Fr::SIZE] {
+impl<'a> From<&'a Fr> for [u8; 32] {
+    fn from(value: &'a Fr) -> [u8; 32] {
         value.to_bytes()
     }
+}
+
+impl Field for Fr {
+    const ZERO: Self = Self::zero();
+    const ONE: Self = Self::one();
+
+    fn random(mut rng: impl RngCore) -> Self {
+        let mut buf = [0; 64];
+        rng.fill_bytes(&mut buf);
+        Self::from_bytes_wide(&buf)
+    }
+
+    #[must_use]
+    fn square(&self) -> Self {
+        self.square()
+    }
+
+    #[must_use]
+    fn double(&self) -> Self {
+        self.double()
+    }
+
+    fn invert(&self) -> CtOption<Self> {
+        self.invert()
+    }
+
+    fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
+        ff::helpers::sqrt_ratio_generic(num, div)
+    }
+
+    fn sqrt(&self) -> CtOption<Self> {
+        self.sqrt()
+    }
+}
+
+impl PrimeField for Fr {
+    type Repr = [u8; 32];
+
+    fn from_repr(r: Self::Repr) -> CtOption<Self> {
+        Self::from_bytes(&r)
+    }
+
+    fn to_repr(&self) -> Self::Repr {
+        self.to_bytes()
+    }
+
+    fn is_odd(&self) -> Choice {
+        Choice::from(self.to_bytes()[0] & 1)
+    }
+
+    const MODULUS: &'static str =
+        "0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7";
+    const NUM_BITS: u32 = MODULUS_BITS;
+    const CAPACITY: u32 = Self::NUM_BITS - 1;
+    const TWO_INV: Self = TWO_INV;
+    const MULTIPLICATIVE_GENERATOR: Self = GENERATOR;
+    const S: u32 = S;
+    const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
+    const ROOT_OF_UNITY_INV: Self = ROOT_OF_UNITY_INV;
+    const DELTA: Self = DELTA;
+}
+
+#[cfg(all(feature = "bits", not(target_pointer_width = "64")))]
+type ReprBits = [u32; 8];
+
+#[cfg(all(feature = "bits", target_pointer_width = "64"))]
+type ReprBits = [u64; 4];
+
+#[cfg(feature = "bits")]
+impl PrimeFieldBits for Fr {
+    type ReprBits = ReprBits;
+
+    fn to_le_bits(&self) -> FieldBits<Self::ReprBits> {
+        let bytes = self.to_bytes();
+
+        #[cfg(not(target_pointer_width = "64"))]
+        let limbs = [
+            u32::from_le_bytes(bytes[0..4].try_into().unwrap()),
+            u32::from_le_bytes(bytes[4..8].try_into().unwrap()),
+            u32::from_le_bytes(bytes[8..12].try_into().unwrap()),
+            u32::from_le_bytes(bytes[12..16].try_into().unwrap()),
+            u32::from_le_bytes(bytes[16..20].try_into().unwrap()),
+            u32::from_le_bytes(bytes[20..24].try_into().unwrap()),
+            u32::from_le_bytes(bytes[24..28].try_into().unwrap()),
+            u32::from_le_bytes(bytes[28..32].try_into().unwrap()),
+        ];
+
+        #[cfg(target_pointer_width = "64")]
+        let limbs = [
+            u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
+            u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+            u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
+            u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
+        ];
+
+        FieldBits::new(limbs)
+    }
+
+    fn char_le_bits() -> FieldBits<Self::ReprBits> {
+        #[cfg(not(target_pointer_width = "64"))]
+        {
+            FieldBits::new(MODULUS_LIMBS_32)
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        FieldBits::new(MODULUS.0)
+    }
+}
+
+#[test]
+fn test_constants() {
+    assert_eq!(
+        Fr::MODULUS,
+        "0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7",
+    );
+
+    assert_eq!(Fr::from(2u64) * Fr::TWO_INV, Fr::ONE);
+
+    assert_eq!(Fr::ROOT_OF_UNITY * Fr::ROOT_OF_UNITY_INV, Fr::ONE);
+
+    // ROOT_OF_UNITY^{2^s} mod m == 1
+    assert_eq!(Fr::ROOT_OF_UNITY.pow(&[1u64 << Fr::S, 0, 0, 0]), Fr::ONE);
+
+    // DELTA^{t} mod m == 1
+    assert_eq!(
+        Fr::DELTA.pow(&[
+            0x684b_872f_6b7b_965b,
+            0x5334_1049_e664_0841,
+            0x8333_9d80_809a_1d80,
+            0x073e_da75_3299_d7d4,
+        ]),
+        Fr::ONE,
+    );
 }
 
 #[test]
@@ -808,6 +857,7 @@ fn test_debug() {
     );
 }
 
+#[allow(clippy::eq_op)]
 #[test]
 fn test_equality() {
     assert_eq!(Fr::zero(), Fr::zero());
@@ -886,37 +936,52 @@ fn test_from_bytes() {
     );
 
     // -1 should work
-    assert!(Fr::from_bytes(&[
-        182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
-        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
-    ])
-    .is_ok());
+    assert!(bool::from(
+        Fr::from_bytes(&[
+            182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
+        ])
+        .is_some()
+    ));
 
     // modulus is invalid
-    assert!(Fr::from_bytes(&[
-        183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
-        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
-    ])
-    .is_err());
+    assert!(bool::from(
+        Fr::from_bytes(&[
+            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
+        ])
+        .is_none()
+    ));
 
     // Anything larger than the modulus is invalid
-    assert!(Fr::from_bytes(&[
-        184, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
-        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 14
-    ])
-    .is_err());
+    assert!(bool::from(
+        Fr::from_bytes(&[
+            184, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
+        ])
+        .is_none()
+    ));
 
-    assert!(Fr::from_bytes(&[
-        183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
-        166, 0, 59, 52, 1, 1, 59, 104, 6, 169, 175, 51, 101, 234, 180, 125, 14
-    ])
-    .is_err());
+    assert!(bool::from(
+        Fr::from_bytes(&[
+            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 104, 6, 169, 175, 51, 101, 234, 180,
+            125, 14
+        ])
+        .is_none()
+    ));
 
-    assert!(Fr::from_bytes(&[
-        183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32, 104,
-        166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180, 125, 15
-    ])
-    .is_err());
+    assert!(bool::from(
+        Fr::from_bytes(&[
+            183, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204, 147, 32,
+            104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175, 51, 101, 234, 180,
+            125, 15
+        ])
+        .is_none()
+    ));
 }
 
 #[test]
@@ -948,7 +1013,7 @@ fn test_from_u512_r2() {
 
 #[test]
 fn test_from_u512_max() {
-    let max_u64 = 0xffffffffffffffff;
+    let max_u64 = 0xffff_ffff_ffff_ffff;
     assert_eq!(
         R3 - R,
         Fr::from_u512([
@@ -988,10 +1053,10 @@ fn test_from_bytes_wide_negative_one() {
 fn test_from_bytes_wide_maximum() {
     assert_eq!(
         Fr([
-            0x8b75c9015ae42a22,
-            0xe59082e7bf9e38b8,
-            0x6440c91261da51b3,
-            0xa5e07ffb20991cf
+            0x8b75_c901_5ae4_2a22,
+            0xe590_82e7_bf9e_38b8,
+            0x6440_c912_61da_51b3,
+            0x0a5e_07ff_b209_91cf,
         ]),
         Fr::from_bytes_wide(&[0xff; 64])
     );
@@ -1007,10 +1072,10 @@ fn test_zero() {
 
 #[cfg(test)]
 const LARGEST: Fr = Fr([
-    0xd0970e5ed6f72cb6,
-    0xa6682093ccc81082,
-    0x06673b0101343b00,
-    0x0e7db4ea6533afa9,
+    0xd097_0e5e_d6f7_2cb6,
+    0xa668_2093_ccc8_1082,
+    0x0667_3b01_0134_3b00,
+    0x0e7d_b4ea_6533_afa9,
 ]);
 
 #[test]
@@ -1021,10 +1086,10 @@ fn test_addition() {
     assert_eq!(
         tmp,
         Fr([
-            0xd0970e5ed6f72cb5,
-            0xa6682093ccc81082,
-            0x06673b0101343b00,
-            0x0e7db4ea6533afa9
+            0xd097_0e5e_d6f7_2cb5,
+            0xa668_2093_ccc8_1082,
+            0x0667_3b01_0134_3b00,
+            0x0e7d_b4ea_6533_afa9
         ])
     );
 
@@ -1116,7 +1181,7 @@ fn test_squaring() {
 
 #[test]
 fn test_inversion() {
-    assert_eq!(Fr::zero().invert().is_none().unwrap_u8(), 1);
+    assert!(bool::from(Fr::zero().invert().is_none()));
     assert_eq!(Fr::one().invert().unwrap(), Fr::one());
     assert_eq!((-&Fr::one()).invert().unwrap(), -&Fr::one());
 
@@ -1135,10 +1200,10 @@ fn test_inversion() {
 #[test]
 fn test_invert_is_pow() {
     let r_minus_2 = [
-        0xd0970e5ed6f72cb5,
-        0xa6682093ccc81082,
-        0x06673b0101343b00,
-        0x0e7db4ea6533afa9,
+        0xd097_0e5e_d6f7_2cb5,
+        0xa668_2093_ccc8_1082,
+        0x0667_3b01_0134_3b00,
+        0x0e7d_b4ea_6533_afa9,
     ];
 
     let mut r1 = R;
@@ -1163,17 +1228,17 @@ fn test_invert_is_pow() {
 fn test_sqrt() {
     let mut square = Fr([
         // r - 2
-        0xd0970e5ed6f72cb5,
-        0xa6682093ccc81082,
-        0x06673b0101343b00,
-        0x0e7db4ea6533afa9,
+        0xd097_0e5e_d6f7_2cb5,
+        0xa668_2093_ccc8_1082,
+        0x0667_3b01_0134_3b00,
+        0x0e7d_b4ea_6533_afa9,
     ]);
 
     let mut none_count = 0;
 
     for _ in 0..100 {
         let square_root = square.sqrt();
-        if square_root.is_none().unwrap_u8() == 1 {
+        if bool::from(square_root.is_none()) {
             none_count += 1;
         } else {
             assert_eq!(square_root.unwrap() * square_root.unwrap(), square);
@@ -1188,12 +1253,12 @@ fn test_sqrt() {
 fn test_from_raw() {
     assert_eq!(
         Fr::from_raw([
-            0x25f80bb3b99607d8,
-            0xf315d62f66b6e750,
-            0x932514eeeb8814f4,
-            0x9a6fc6f479155c6
+            0x25f8_0bb3_b996_07d8,
+            0xf315_d62f_66b6_e750,
+            0x9325_14ee_eb88_14f4,
+            0x09a6_fc6f_4791_55c6,
         ]),
-        Fr::from_raw([0xffffffffffffffff; 4])
+        Fr::from_raw([0xffff_ffff_ffff_ffff; 4])
     );
 
     assert_eq!(Fr::from_raw(MODULUS.0), Fr::zero());
@@ -1201,56 +1266,303 @@ fn test_from_raw() {
     assert_eq!(Fr::from_raw([1, 0, 0, 0]), R);
 }
 
-#[test]
-fn w_naf_3() {
-    let scalar = Fr::from(1122334455u64);
-    let w = 3;
-    // -1 - 1*2^3 - 1*2^8 - 1*2^11 + 3*2^15 + 1*2^18 - 1*2^21 + 3*2^24 + 1*2^30
-    let expected_result = [
-        -1i8, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0, 0,
-        -1, 0, 0, 3, 0, 0, 0, 0, 0, 1,
-    ];
+// Dusk Network features
+mod dusk {
+    use super::*;
 
-    let mut expected = [0i8; 256];
-    expected[..expected_result.len()].copy_from_slice(&expected_result);
+    use core::cmp::{Ord, Ordering, PartialOrd};
+    use core::ops::{Index, IndexMut};
+    use dusk_bls12_381::BlsScalar;
 
-    let computed = scalar.compute_windowed_naf(w);
+    use dusk_bytes::{Error as BytesError, Serializable};
 
-    assert_eq!(expected, computed);
-}
+    impl Fr {
+        /// Generate a valid Scalar choosen uniformly using user-
+        /// provided rng.
+        ///
+        /// By `rng` we mean any Rng that implements: `Rng` + `CryptoRng`.
+        pub fn random<T>(rand: &mut T) -> Fr
+        where
+            T: RngCore,
+        {
+            let mut bytes = [0u8; 64];
+            rand.fill_bytes(&mut bytes);
 
-#[test]
-fn w_naf_4() {
-    let scalar = Fr::from(58235u64);
-    let w = 4;
-    // -5 + 7*2^7 + 7*2^13
-    let expected_result = [-5, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 7];
-
-    let mut expected = [0i8; 256];
-    expected[..expected_result.len()].copy_from_slice(&expected_result);
-
-    let computed = scalar.compute_windowed_naf(w);
-
-    assert_eq!(expected, computed);
-}
-
-#[test]
-fn w_naf_2() {
-    let scalar = -Fr::one();
-    let w = 2;
-    let two = Fr::from(2u64);
-
-    let wnaf = scalar.compute_windowed_naf(w);
-
-    let recomputed = wnaf.iter().enumerate().fold(Fr::zero(), |acc, (i, x)| {
-        if *x > 0 {
-            acc + Fr::from(*x as u64) * two.pow(&[(i as u64), 0u64, 0u64, 0u64])
-        } else if *x < 0 {
-            acc - Fr::from(-(*x) as u64)
-                * two.pow(&[(i as u64), 0u64, 0u64, 0u64])
-        } else {
-            acc
+            Fr::from_bytes_wide(&bytes)
         }
-    });
-    assert_eq!(scalar, recomputed);
+
+        /// SHR impl: shifts bits n times, equivalent to division by 2^n.
+        #[inline]
+        pub fn divn(&mut self, mut n: u32) {
+            if n >= 256 {
+                *self = Self::from(0u64);
+                return;
+            }
+
+            while n >= 64 {
+                let mut t = 0;
+                for i in self.0.iter_mut().rev() {
+                    core::mem::swap(&mut t, i);
+                }
+                n -= 64;
+            }
+
+            if n > 0 {
+                let mut t = 0;
+                for i in self.0.iter_mut().rev() {
+                    let t2 = *i << (64 - n);
+                    *i >>= n;
+                    *i |= t;
+                    t = t2;
+                }
+            }
+        }
+
+        /// Reduces bit representation of numbers, such that
+        /// they can be evaluated in terms of the least significant bit.
+        pub fn reduce(&self) -> Self {
+            Fr::montgomery_reduce(
+                self.0[0], self.0[1], self.0[2], self.0[3], 0u64, 0u64, 0u64,
+                0u64,
+            )
+        }
+
+        /// Evaluate if a `Scalar, from Fr` is even or not.
+        pub fn is_even(&self) -> bool {
+            self.0[0] % 2 == 0
+        }
+
+        /// Compute the result from `Scalar (mod 2^k)`.
+        ///
+        /// # Panics
+        ///
+        /// If the given k is > 32 (5 bits) as the value gets
+        /// greater than the limb.  
+        pub fn mod_2_pow_k(&self, k: u8) -> u8 {
+            (self.0[0] & ((1 << k) - 1)) as u8
+        }
+
+        /// Compute the result from `Scalar (mods k)`.
+        ///
+        /// # Panics
+        ///
+        /// If the given `k > 32 (5 bits)` || `k == 0` as the value gets
+        /// greater than the limb.   
+        pub fn mods_2_pow_k(&self, w: u8) -> i8 {
+            assert!(w < 32u8);
+            let modulus = self.mod_2_pow_k(w) as i8;
+            let two_pow_w_minus_one = 1i8 << (w - 1);
+
+            match modulus >= two_pow_w_minus_one {
+                false => modulus,
+                true => modulus - ((1u8 << w) as i8),
+            }
+        }
+
+        /// Computes the windowed-non-adjacent form for a given an element in
+        /// the JubJub Scalar field.
+        ///
+        /// The wnaf of a scalar is its breakdown:
+        ///     scalar = sum_i{wnaf[i]*2^i}
+        /// where for all i:
+        ///     -2^{w-1} < wnaf[i] < 2^{w-1}
+        /// and
+        ///     wnaf[i] * wnaf[i+1] = 0
+        pub fn compute_windowed_naf(&self, width: u8) -> [i8; 256] {
+            let mut k = self.reduce();
+            let mut i = 0;
+            let one = Fr::one().reduce();
+            let mut res = [0i8; 256];
+
+            while k >= one {
+                if !k.is_even() {
+                    let ki = k.mods_2_pow_k(width);
+                    res[i] = ki;
+                    k = k - Fr::from(ki);
+                } else {
+                    res[i] = 0i8;
+                };
+
+                k.divn(1u32);
+                i += 1;
+            }
+            res
+        }
+    }
+
+    // TODO implement From<T> for any integer type smaller than 128-bit
+    impl From<i8> for Fr {
+        // FIXME this could really be better if we removed the match
+        fn from(val: i8) -> Fr {
+            match (val >= 0, val < 0) {
+                (true, false) => Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
+                (false, true) => -Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
+                (_, _) => unreachable!(),
+            }
+        }
+    }
+
+    impl From<Fr> for BlsScalar {
+        fn from(scalar: Fr) -> BlsScalar {
+            let bls_scalar =
+                <BlsScalar as Serializable<32>>::from_bytes(&scalar.to_bytes());
+
+            // The order of a JubJub's Scalar field is shorter than a BLS
+            // Scalar, so convert any jubjub scalar to a BLS' Scalar
+            // should always be safe.
+            assert!(
+                bls_scalar.is_ok(),
+                "Failed to convert a Scalar from JubJub to BLS"
+            );
+
+            bls_scalar.unwrap()
+        }
+    }
+
+    impl Index<usize> for Fr {
+        type Output = u64;
+        fn index(&self, _index: usize) -> &u64 {
+            &(self.0[_index])
+        }
+    }
+
+    impl IndexMut<usize> for Fr {
+        fn index_mut(&mut self, _index: usize) -> &mut u64 {
+            &mut (self.0[_index])
+        }
+    }
+
+    impl PartialOrd for Fr {
+        fn partial_cmp(&self, other: &Fr) -> Option<Ordering> {
+            Some(self.cmp(&other))
+        }
+    }
+
+    impl Ord for Fr {
+        fn cmp(&self, other: &Self) -> Ordering {
+            let a = self;
+            let other = other;
+            for i in (0..4).rev() {
+                if a[i] > other[i] {
+                    return Ordering::Greater;
+                } else if a[i] < other[i] {
+                    return Ordering::Less;
+                }
+            }
+            Ordering::Equal
+        }
+    }
+
+    impl Serializable<32> for Fr {
+        type Error = BytesError;
+
+        /// Attempts to convert a little-endian byte representation of
+        /// a field element into an element of `Fr`, failing if the input
+        /// is not canonical (is not smaller than r).
+        fn from_bytes(bytes: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
+            let mut tmp = Fr([0, 0, 0, 0]);
+
+            tmp.0[0] = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
+            tmp.0[1] = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+            tmp.0[2] = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
+            tmp.0[3] = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
+
+            // Try to subtract the modulus
+            let (_, borrow) = sbb(tmp.0[0], MODULUS.0[0], 0);
+            let (_, borrow) = sbb(tmp.0[1], MODULUS.0[1], borrow);
+            let (_, borrow) = sbb(tmp.0[2], MODULUS.0[2], borrow);
+            let (_, borrow) = sbb(tmp.0[3], MODULUS.0[3], borrow);
+
+            // If the element is smaller than MODULUS then the
+            // subtraction will underflow, producing a borrow value
+            // of 0xffff...ffff. Otherwise, it'll be zero.
+            let is_some = (borrow as u8) & 1;
+
+            if is_some == 0 {
+                return Err(BytesError::InvalidData);
+            }
+
+            // Convert to Montgomery form by computing
+            // (a.R^0 * R^2) / R = a.R
+            tmp *= &R2;
+
+            Ok(tmp)
+        }
+
+        /// Converts an element of `Fr` into a byte representation in
+        /// little-endian byte order.
+        fn to_bytes(&self) -> [u8; Self::SIZE] {
+            // Turn into canonical form by computing
+            // (a.R) / R = a
+            let tmp = Fr::montgomery_reduce(
+                self.0[0], self.0[1], self.0[2], self.0[3], 0, 0, 0, 0,
+            );
+
+            let mut res = [0; Self::SIZE];
+            res[0..8].copy_from_slice(&tmp.0[0].to_le_bytes());
+            res[8..16].copy_from_slice(&tmp.0[1].to_le_bytes());
+            res[16..24].copy_from_slice(&tmp.0[2].to_le_bytes());
+            res[24..32].copy_from_slice(&tmp.0[3].to_le_bytes());
+
+            res
+        }
+    }
+
+    #[test]
+    fn w_naf_3() {
+        let scalar = Fr::from(1122334455u64);
+        let w = 3;
+        // -1 - 1*2^3 - 1*2^8 - 1*2^11 + 3*2^15 + 1*2^18 - 1*2^21 + 3*2^24 +
+        // 1*2^30
+        let expected_result = [
+            -1i8, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 3, 0, 0, 1, 0,
+            0, -1, 0, 0, 3, 0, 0, 0, 0, 0, 1,
+        ];
+
+        let mut expected = [0i8; 256];
+        expected[..expected_result.len()].copy_from_slice(&expected_result);
+
+        let computed = scalar.compute_windowed_naf(w);
+
+        assert_eq!(expected, computed);
+    }
+
+    #[test]
+    fn w_naf_4() {
+        let scalar = Fr::from(58235u64);
+        let w = 4;
+        // -5 + 7*2^7 + 7*2^13
+        let expected_result = [-5, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 7];
+
+        let mut expected = [0i8; 256];
+        expected[..expected_result.len()].copy_from_slice(&expected_result);
+
+        let computed = scalar.compute_windowed_naf(w);
+
+        assert_eq!(expected, computed);
+    }
+
+    #[test]
+    fn w_naf_2() {
+        let scalar = -Fr::one();
+        let w = 2;
+        let two = Fr::from(2u64);
+
+        let wnaf = scalar.compute_windowed_naf(w);
+
+        let recomputed =
+            wnaf.iter().enumerate().fold(Fr::zero(), |acc, (i, x)| {
+                if *x > 0 {
+                    acc + Fr::from(*x as u64)
+                        * two.pow(&[(i as u64), 0u64, 0u64, 0u64])
+                } else if *x < 0 {
+                    acc - Fr::from(-(*x) as u64)
+                        * two.pow(&[(i as u64), 0u64, 0u64, 0u64])
+                } else {
+                    acc
+                }
+            });
+        assert_eq!(scalar, recomputed);
+    }
 }
+pub use dusk::*;

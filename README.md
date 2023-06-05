@@ -1,4 +1,4 @@
-# jubjub [![Crates.io](https://img.shields.io/crates/v/jubjub.svg)](https://crates.io/crates/jubjub) #
+# jubjub [![Crates.io](https://img.shields.io/crates/v/jubjub.svg)](https://crates.io/crates/dusk-jubjub) #
 
 <img
  width="15%"
@@ -8,7 +8,7 @@
 This is a pure Rust implementation of the Jubjub elliptic curve group and its associated fields.
 
 * **This implementation has not been reviewed or audited. Use at your own risk.**
-* This implementation targets Rust `1.36` or later.
+* This implementation targets Rust `1.56` or later.
 * All operations are constant time unless explicitly noted.
 * This implementation does not require the Rust standard library.
 

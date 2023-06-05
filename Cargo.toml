@@ -6,6 +6,7 @@ authors = [
     "CPerezz <carlos@dusk.network>"
 ]
 description = "Dusk's fork of the implementation of the Jubjub elliptic curve group"
+documentation = "https://docs.rs/dusk-jubjub"
 homepage = "https://github.com/dusk-network/jubjub"
 license = "MIT/Apache-2.0"
 name = "dusk-jubjub"
@@ -14,23 +15,73 @@ version = "0.12.1"
 keywords = ["cryptography", "jubjub", "zk-snarks", "ecc", "elliptic-curve"]
 categories =["algorithms", "cryptography", "science", "no-std"]
 edition = "2021"
-exclude = [".github/workflows/ci.yml", "github/workflows/rust.yml",
-".gitignore", 
+exclude = [
+    ".github/*",
+    ".gitignore",
 ]
 
-[dependencies]
-dusk-bytes = "0.1"
-dusk-bls12_381 = {version="0.11", default-features=false}
-subtle = {version="^2.3", default-features = false}
-rand_core = {version = "0.6", default-features=false}
-rkyv = {version = "0.7", optional = true, default-features = false}
-bytecheck = {version = "0.6", optional=true, default-features = false}
+[dependencies.bitvec]
+version = "1"
+default-features = false
+
+[dependencies.bytecheck]
+version = "0.6"
+optional = true
+default-features = false
+
+[dependencies.dusk-bls12_381]
+version = "0.12"
+default-features = false
+
+[dependencies.dusk-bytes]
+version = "0.1"
+
+[dependencies.ff]
+version = "0.13"
+default-features = false
+
+[dependencies.group]
+version = "0.13"
+default-features = false
+
+[dependencies.rand_core]
+version = "0.6"
+default-features = false
+
+[dependencies.rkyv]
+version = "0.7"
+optional = true
+default-features = false
+
+[dependencies.subtle]
+version = "^2.2.1"
+default-features = false
 
 [dev-dependencies]
-rand_xorshift = {version="0.3", default-features = false}
-blake2 = "0.9"
+criterion = "0.3"
+csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
+
+[dev-dependencies.rand_xorshift]
+version = "0.3"
+default-features = false
+
+[dev-dependencies.blake2]
+version = "0.9"
 
 [features]
-default = ["std"]
-std = ["dusk-bls12_381/default"]
+default = ["alloc", "bits"]
+alloc = ["ff/alloc", "group/alloc"]
+bits = ["ff/bits"]
 rkyv-impl = ["bytecheck", "dusk-bls12_381/rkyv-impl", "rkyv"]
+
+[[bench]]
+name = "fq_bench"
+harness = false
+
+[[bench]]
+name = "fr_bench"
+harness = false
+
+[[bench]]
+name = "point_bench"
+harness = false
