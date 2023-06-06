@@ -24,17 +24,9 @@ exclude = [
 version = "1"
 default-features = false
 
-[dependencies.bytecheck]
-version = "0.6"
-optional = true
-default-features = false
-
 [dependencies.dusk-bls12_381]
 version = "0.12"
 default-features = false
-
-[dependencies.dusk-bytes]
-version = "0.1"
 
 [dependencies.ff]
 version = "0.13"
@@ -48,14 +40,24 @@ default-features = false
 version = "0.6"
 default-features = false
 
+[dependencies.subtle]
+version = "^2.2.1"
+default-features = false
+
+# Begin Dusk dependencies
+[dependencies.bytecheck]
+version = "0.6"
+optional = true
+default-features = false
+
+[dependencies.dusk-bytes]
+version = "0.1"
+
 [dependencies.rkyv]
 version = "0.7"
 optional = true
 default-features = false
-
-[dependencies.subtle]
-version = "^2.2.1"
-default-features = false
+# End Dusk dependendencies
 
 [dev-dependencies]
 criterion = "0.3"
@@ -65,6 +67,7 @@ csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
 version = "0.3"
 default-features = false
 
+# Begin Dusk dev-dependencies
 [dev-dependencies.blake2]
 version = "0.9"
 
