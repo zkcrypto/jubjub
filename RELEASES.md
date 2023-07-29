@@ -1,7 +1,7 @@
 # Unreleased
 ## Changed
 - Bumped MSRV to `1.85.0`
-- Bumped dependencies to `bls12_381 0.9`, `ff 0.14`, `group 0.14`.
+- Bumped dependencies to `bls12_381 0.9`, `ff 0.14`, `group 0.14`, `rand_core 0.10`.
 
 # 0.10.0
 ## Changed

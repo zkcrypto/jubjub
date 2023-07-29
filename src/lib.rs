@@ -42,11 +42,11 @@ use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use ff::{BatchInverter, Field};
 use group::{
-    Curve, Group, GroupEncoding,
-    cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
+    Curve, CurveAffine, Group, GroupEncoding,
+    cofactor::{CofactorCurve, CofactorGroup},
     prime::PrimeGroup,
 };
-use rand_core::TryRngCore;
+use rand_core::TryRng;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "alloc")]
@@ -1241,9 +1241,9 @@ impl_binops_multiplicative!(SubgroupPoint, Fr);
 impl Group for ExtendedPoint {
     type Scalar = Fr;
 
-    fn try_from_rng<R: TryRngCore + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
+    fn try_random<R: TryRng + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         loop {
-            let v = Fq::try_from_rng(rng)?;
+            let v = Fq::try_random(rng)?;
             let flip_sign = rng.try_next_u32()? % 2 != 0;
 
             // See AffinePoint::from_bytes for details.
@@ -1287,9 +1287,9 @@ impl Group for ExtendedPoint {
 impl Group for SubgroupPoint {
     type Scalar = Fr;
 
-    fn try_from_rng<R: TryRngCore + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
+    fn try_random<R: TryRng + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         loop {
-            let p = ExtendedPoint::try_from_rng(rng)?.clear_cofactor();
+            let p = ExtendedPoint::try_random(rng)?.clear_cofactor();
 
             if bool::from(!p.is_identity()) {
                 return Ok(p);
@@ -1354,22 +1354,20 @@ impl CofactorGroup for ExtendedPoint {
 }
 
 impl Curve for ExtendedPoint {
-    type AffineRepr = AffinePoint;
+    type Affine = AffinePoint;
 
-    fn batch_normalize(p: &[Self], q: &mut [Self::AffineRepr]) {
+    fn batch_normalize(p: &[Self], q: &mut [Self::Affine]) {
         Self::batch_normalize(p, q);
     }
 
-    fn to_affine(&self) -> Self::AffineRepr {
+    fn to_affine(&self) -> Self::Affine {
         self.into()
     }
 }
 
-impl CofactorCurve for ExtendedPoint {
-    type Affine = AffinePoint;
-}
+impl CofactorCurve for ExtendedPoint {}
 
-impl CofactorCurveAffine for AffinePoint {
+impl CurveAffine for AffinePoint {
     type Scalar = Fr;
     type Curve = ExtendedPoint;
 
