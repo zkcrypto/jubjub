@@ -96,7 +96,7 @@ impl Serializable<32> for JubJubAffine {
     /// with serialization.
     /// See: <https://zips.z.cash/zip-0216> for more details.
     fn from_bytes(b: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
-        let mut b = b.clone();
+        let mut b = *b;
 
         // Grab the sign bit from the representation
         let sign = b[31] >> 7;
@@ -122,7 +122,7 @@ impl Serializable<32> for JubJubAffine {
 
         Option::from(
             ((v2 - BlsScalar::one())
-                * ((BlsScalar::one() + EDWARDS_D * &v2)
+                * ((BlsScalar::one() + EDWARDS_D * v2)
                     .invert()
                     .unwrap_or(BlsScalar::zero())))
             .sqrt()

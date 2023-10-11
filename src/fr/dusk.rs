@@ -119,7 +119,7 @@ impl Fr {
             if !k.is_even() {
                 let ki = k.mods_2_pow_k(width);
                 res[i] = ki;
-                k = k - Fr::from(ki);
+                k -= Fr::from(ki);
             } else {
                 res[i] = 0i8;
             };
@@ -136,8 +136,8 @@ impl From<i8> for Fr {
     // FIXME this could really be better if we removed the match
     fn from(val: i8) -> Fr {
         match (val >= 0, val < 0) {
-            (true, false) => Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
-            (false, true) => -Fr([val.abs() as u64, 0u64, 0u64, 0u64]),
+            (true, false) => Fr([val.unsigned_abs() as u64, 0u64, 0u64, 0u64]),
+            (false, true) => -Fr([val.unsigned_abs() as u64, 0u64, 0u64, 0u64]),
             (_, _) => unreachable!(),
         }
     }
@@ -175,15 +175,15 @@ impl IndexMut<usize> for Fr {
 
 impl PartialOrd for Fr {
     fn partial_cmp(&self, other: &Fr) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for Fr {
     fn cmp(&self, other: &Self) -> Ordering {
         let a = self;
-        let other = other;
         for i in (0..4).rev() {
+            #[allow(clippy::comparison_chain)]
             if a[i] > other[i] {
                 return Ordering::Greater;
             } else if a[i] < other[i] {
