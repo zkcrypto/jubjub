@@ -446,8 +446,8 @@ impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedNielsPoint {
 
 impl_binops_multiplicative_mixed!(ExtendedNielsPoint, Fr, ExtendedPoint);
 
-// `d = -(10240/10241)`
-const EDWARDS_D: Fq = Fq::from_raw([
+/// `d = -(10240/10241)`
+pub const EDWARDS_D: Fq = Fq::from_raw([
     0x0106_5fd6_d634_3eb1,
     0x292d_7f6d_3757_9d26,
     0xf5fd_9207_e6bd_7fd4,
