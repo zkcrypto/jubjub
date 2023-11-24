@@ -129,6 +129,37 @@ impl Fr {
         }
         res
     }
+
+    /// Creates a `Fr` from arbitrary bytes by hashing the input with BLAKE2b
+    /// into a 256-bits number, and then converting it into its `Fr`
+    /// representation.
+    pub fn from_var_bytes(input: &[u8]) -> Self {
+        let state = blake2b_simd::Params::new()
+            .hash_length(32)
+            .to_state()
+            .update(input)
+            .finalize();
+
+        let h = state.as_bytes();
+        let mut r = [0u64; 4];
+
+        // will be optmized by the compiler, depending on the available target
+        for i in 0..4 {
+            r[i] = u64::from_le_bytes([
+                h[i * 8],
+                h[i * 8 + 1],
+                h[i * 8 + 2],
+                h[i * 8 + 3],
+                h[i * 8 + 4],
+                h[i * 8 + 5],
+                h[i * 8 + 6],
+                h[i * 8 + 7],
+            ]);
+        }
+
+        // `from_raw` converts from arbitrary to congruent scalar
+        Self::from_raw(r)
+    }
 }
 
 // TODO implement From<T> for any integer type smaller than 128-bit
@@ -302,4 +333,30 @@ fn w_naf_2() {
         }
     });
     assert_eq!(scalar, recomputed);
+}
+
+#[cfg(all(test, feature = "alloc"))]
+mod fuzz {
+    use alloc::vec::Vec;
+
+    use crate::fr::{Fr, MODULUS};
+    use crate::util::sbb;
+
+    fn is_fr_in_range(fr: &Fr) -> bool {
+        // subtraction against modulus must underflow
+        let borrow =
+            fr.0.iter()
+                .zip(MODULUS.0.iter())
+                .fold(0, |borrow, (&s, &m)| sbb(s, m, borrow).1);
+
+        borrow == u64::MAX
+    }
+
+    quickcheck::quickcheck! {
+        fn prop_fr_from_raw_bytes(bytes: Vec<u8>) -> bool {
+            let fr = Fr::from_var_bytes(&bytes);
+
+            is_fr_in_range(&fr)
+        }
+    }
 }

@@ -45,6 +45,10 @@ version = "2"
 default-features = false
 
 # Begin Dusk dependencies
+[dependencies.blake2b_simd]
+version = "1.0"
+default-features = false
+
 [dependencies.bytecheck]
 version = "0.6"
 optional = true
@@ -62,6 +66,7 @@ default-features = false
 [dev-dependencies]
 criterion = "0.3"
 csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
+quickcheck = "1"
 
 [dev-dependencies.rand_xorshift]
 version = "0.3"
