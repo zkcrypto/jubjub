@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Remove dusk's implementation of `Fr::random` [#127]
+
 ### Added
 
 - Add `from_var_bytes` to scalar [#126]
@@ -202,6 +206,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Initial fork from [`zkcrypto/jubjub`]
 
+<!-- ISSUES -->
+[#127]: https://github.com/dusk-network/jubjub/issues/127
 [#126]: https://github.com/dusk-network/jubjub/issues/126
 [#115]: https://github.com/dusk-network/jubjub/issues/115
 [#109]: https://github.com/dusk-network/jubjub/issues/109
@@ -220,6 +226,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#31]: https://github.com/dusk-network/jubjub/issues/31
 [#25]: https://github.com/dusk-network/jubjub/issues/25
 
+<!-- VERSIONS -->
 [Unreleased]: https://github.com/dusk-network/jubjub/compare/v0.13.1...HEAD
 [0.13.1]: https://github.com/dusk-network/jubjub/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/dusk-network/jubjub/compare/v0.12.1...v0.13.0
