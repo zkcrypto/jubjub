@@ -4,35 +4,17 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use core::convert::TryInto;
-
-use rand_core::RngCore;
-
-use crate::util::sbb;
-
 use core::cmp::{Ord, Ordering, PartialOrd};
+use core::convert::TryInto;
 use core::ops::{Index, IndexMut};
-use dusk_bls12_381::BlsScalar;
 
+use dusk_bls12_381::BlsScalar;
 use dusk_bytes::{Error as BytesError, Serializable};
 
 use super::{Fr, MODULUS, R2};
+use crate::util::sbb;
 
 impl Fr {
-    /// Generate a valid Scalar choosen uniformly using user-
-    /// provided rng.
-    ///
-    /// By `rng` we mean any Rng that implements: `Rng` + `CryptoRng`.
-    pub fn random<T>(rand: &mut T) -> Fr
-    where
-        T: RngCore,
-    {
-        let mut bytes = [0u8; 64];
-        rand.fill_bytes(&mut bytes);
-
-        Fr::from_bytes_wide(&bytes)
-    }
-
     /// SHR impl: shifts bits n times, equivalent to division by 2^n.
     #[inline]
     pub fn divn(&mut self, mut n: u32) {
