@@ -15,6 +15,47 @@ use super::{Fr, MODULUS, R2};
 use crate::util::sbb;
 
 impl Fr {
+    /// Creates a `Fr` from arbitrary bytes by hashing the input with BLAKE2b
+    /// into a 512-bits number, and then converting the number into its scalar
+    /// representation by reducing it by the modulo.
+    ///
+    /// By treating the output of the BLAKE2b hash as a random oracle, this
+    /// implementation follows the first conversion of
+    /// https://hackmd.io/zV6qe1_oSU-kYU6Tt7pO7Q with concrete numbers:
+    /// ```text
+    /// p = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7
+    /// p = 6554484396890773809930967563523245729705921265872317281365359162392183254199
+    ///
+    /// l = 2
+    ///
+    /// s^l = (2^256)^2 = 2^512
+    /// s = 13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084096
+    ///
+    /// r' = 2045593080716281616348203381729468609728209645786990242449482205581148743408809
+    ///
+    /// m' = 2244478849891746936202736009816130624903096691796347063256129649283183245105
+    /// ```
+    pub fn hash_to_scalar(input: &[u8]) -> Self {
+        let state = blake2b_simd::Params::new()
+            .hash_length(64)
+            .to_state()
+            .update(input)
+            .finalize();
+
+        let bytes = state.as_bytes();
+
+        Self::from_u512([
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
+        ])
+    }
+
     /// SHR impl: shifts bits n times, equivalent to division by 2^n.
     #[inline]
     pub fn divn(&mut self, mut n: u32) {
@@ -110,37 +151,6 @@ impl Fr {
             i += 1;
         }
         res
-    }
-
-    /// Creates a `Fr` from arbitrary bytes by hashing the input with BLAKE2b
-    /// into a 256-bits number, and then converting it into its `Fr`
-    /// representation.
-    pub fn from_var_bytes(input: &[u8]) -> Self {
-        let state = blake2b_simd::Params::new()
-            .hash_length(32)
-            .to_state()
-            .update(input)
-            .finalize();
-
-        let h = state.as_bytes();
-        let mut r = [0u64; 4];
-
-        // will be optmized by the compiler, depending on the available target
-        for i in 0..4 {
-            r[i] = u64::from_le_bytes([
-                h[i * 8],
-                h[i * 8 + 1],
-                h[i * 8 + 2],
-                h[i * 8 + 3],
-                h[i * 8 + 4],
-                h[i * 8 + 5],
-                h[i * 8 + 6],
-                h[i * 8 + 7],
-            ]);
-        }
-
-        // `from_raw` converts from arbitrary to congruent scalar
-        Self::from_raw(r)
     }
 }
 
@@ -324,21 +334,22 @@ mod fuzz {
     use crate::fr::{Fr, MODULUS};
     use crate::util::sbb;
 
-    fn is_fr_in_range(fr: &Fr) -> bool {
+    fn is_scalar_in_range(scalar: &Fr) -> bool {
         // subtraction against modulus must underflow
-        let borrow =
-            fr.0.iter()
-                .zip(MODULUS.0.iter())
-                .fold(0, |borrow, (&s, &m)| sbb(s, m, borrow).1);
+        let borrow = scalar
+            .0
+            .iter()
+            .zip(MODULUS.0.iter())
+            .fold(0, |borrow, (&s, &m)| sbb(s, m, borrow).1);
 
         borrow == u64::MAX
     }
 
     quickcheck::quickcheck! {
-        fn prop_fr_from_raw_bytes(bytes: Vec<u8>) -> bool {
-            let fr = Fr::from_var_bytes(&bytes);
+        fn prop_hash_to_scalar(bytes: Vec<u8>) -> bool {
+            let scalar = Fr::hash_to_scalar(&bytes);
 
-            is_fr_in_range(&fr)
+            is_scalar_in_range(&scalar)
         }
     }
 }

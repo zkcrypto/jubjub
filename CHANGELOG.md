@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `from_var_bytes` to scalar [#126]
+- Add `from_var_bytes` to fr [#126] and refactor and rename to `hash_to_scalar` [#129]
+- Add `hash_to_point` to `ExtendedPoint` [#129]
 
 ## [0.13.1] - 2023-10-11
 
@@ -207,6 +208,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Initial fork from [`zkcrypto/jubjub`]
 
 <!-- ISSUES -->
+[#129]: https://github.com/dusk-network/jubjub/issues/129
 [#127]: https://github.com/dusk-network/jubjub/issues/127
 [#126]: https://github.com/dusk-network/jubjub/issues/126
 [#115]: https://github.com/dusk-network/jubjub/issues/115

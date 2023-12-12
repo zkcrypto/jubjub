@@ -213,6 +213,48 @@ impl JubJubExtended {
         let p = JubJubAffine::from(self);
         [p.u, p.v]
     }
+
+    /// Hash an arbitrary slice of bytes to a point on the elliptic curve and
+    /// in the prime order subgroup.
+    ///
+    /// This algorithm uses rejection sampling to hash to a point on the curve:
+    /// The input together with a counter are hashed into an array of 32 bytes.
+    /// If the hash is a canonical representation of a point on the curve and
+    /// a member of the prime-order subgroup, we return it. If not, we increment
+    /// the counter, hash and try to de-serialize again.
+    /// This is the same algorithm we used to generate `GENERATOR_NUMS` as
+    /// outlined [here](https://app.gitbook.com/@dusk-network/s/specs/specifications/poseidon/pedersen-commitment-scheme).
+    ///
+    /// **Note:** This implementation of `hash_to_point` is not constant time,
+    /// in the long run we want to implement an algorithm outlined
+    /// [here](https://datatracker.ietf.org/doc/html/rfc9380), but we start with
+    /// this implementation in order to be able to use the API already.
+    pub fn hash_to_point(input: &[u8]) -> Self {
+        let mut counter = 0u64;
+        let mut array = [0u8; 32];
+        loop {
+            let state = blake2b_simd::Params::new()
+                .hash_length(32)
+                .to_state()
+                .update(input)
+                .update(&counter.to_le_bytes())
+                .finalize();
+
+            array.copy_from_slice(&state.as_bytes()[..32]);
+
+            // check if we hit a point on the curve
+            if let Ok(point) =
+                <JubJubAffine as Serializable<32>>::from_bytes(&array)
+            {
+                // check if this point is part of the correct subgroup and not
+                // the identity
+                if point.is_prime_order().into() {
+                    return point.into();
+                }
+            }
+            counter += 1
+        }
+    }
 }
 
 #[test]
@@ -254,7 +296,6 @@ fn test_affine_point_generator_nums_is_not_identity() {
     );
 }
 
-#[ignore]
 #[test]
 fn second_gen_nums() {
     use blake2::{Blake2b, Digest};
@@ -279,7 +320,24 @@ fn second_gen_nums() {
                     == <JubJubAffine as Serializable<32>>::from_bytes(&array)
                         .unwrap()
             );
+            break;
         }
         counter += 1;
+    }
+    assert_eq!(counter, 18);
+}
+
+#[cfg(all(test, feature = "alloc"))]
+mod fuzz {
+    use alloc::vec::Vec;
+
+    use crate::ExtendedPoint;
+
+    quickcheck::quickcheck! {
+        fn prop_hash_to_point(bytes: Vec<u8>) -> bool {
+            let point = ExtendedPoint::hash_to_point(&bytes);
+
+            point.is_on_curve_vartime() && point.is_prime_order().into()
+        }
     }
 }
