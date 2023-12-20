@@ -42,9 +42,9 @@ use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use ff::{BatchInverter, Field};
 use group::{
-    cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
+    cofactor::{CofactorCurve, CofactorGroup},
     prime::PrimeGroup,
-    Curve, Group, GroupEncoding,
+    Curve, CurveAffine, Group, GroupEncoding,
 };
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -1354,22 +1354,20 @@ impl CofactorGroup for ExtendedPoint {
 }
 
 impl Curve for ExtendedPoint {
-    type AffineRepr = AffinePoint;
+    type Affine = AffinePoint;
 
-    fn batch_normalize(p: &[Self], q: &mut [Self::AffineRepr]) {
+    fn batch_normalize(p: &[Self], q: &mut [Self::Affine]) {
         Self::batch_normalize(p, q);
     }
 
-    fn to_affine(&self) -> Self::AffineRepr {
+    fn to_affine(&self) -> Self::Affine {
         self.into()
     }
 }
 
-impl CofactorCurve for ExtendedPoint {
-    type Affine = AffinePoint;
-}
+impl CofactorCurve for ExtendedPoint {}
 
-impl CofactorCurveAffine for AffinePoint {
+impl CurveAffine for AffinePoint {
     type Scalar = Fr;
     type Curve = ExtendedPoint;
 
