@@ -12,6 +12,12 @@ This is a pure Rust implementation of the Jubjub elliptic curve group and its as
 * All operations are constant time unless explicitly noted.
 * This implementation does not require the Rust standard library.
 
+## RFC process
+
+This crate follows the [zkcrypto RFC process](https://zkcrypto.github.io/rfcs/).
+If you want to propose "substantial" changes to this crate, please
+[create an RFC](https://github.com/zkcrypto/rfcs) for wider discussion.
+
 ## [Documentation](https://docs.rs/jubjub)
 
 ## Curve Description
