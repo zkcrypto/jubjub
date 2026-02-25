@@ -1,3 +1,7 @@
+# Unreleased
+## Changed
+- Bumped MSRV to `1.63.0`
+
 # 0.10.0
 ## Changed
 - Bumped dependencies to `bls12_381 0.8`, `ff 0.13`, `group 0.13`.
