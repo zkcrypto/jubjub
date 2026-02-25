@@ -14,37 +14,18 @@ version = "0.10.0"
 edition = "2021"
 rust-version = "1.63"
 
-[dependencies.bitvec]
-version = "1"
-default-features = false
-
-[dependencies.bls12_381]
-version = "0.8"
-default-features = false
-
-[dependencies.ff]
-version = "0.13"
-default-features = false
-
-[dependencies.group]
-version = "0.13"
-default-features = false
-
-[dependencies.rand_core]
-version = "0.6"
-default-features = false
-
-[dependencies.subtle]
-version = "^2.2.1"
-default-features = false
+[dependencies]
+bitvec = { version = "1", default-features = false }
+bls12_381 = { version = "0.8", default-features = false }
+ff = { version = "=0.14.0-pre.0", default-features = false }
+group = { version = "=0.14.0-pre.0", default-features = false }
+rand_core = { version = "0.9", default-features = false }
+subtle = { version = "^2.2.1", default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"
 csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
-
-[dev-dependencies.rand_xorshift]
-version = "0.3"
-default-features = false
+rand_xorshift = { version = "0.4", default-features = false }
 
 [features]
 default = ["alloc", "bits"]
@@ -62,3 +43,6 @@ harness = false
 [[bench]]
 name = "point_bench"
 harness = false
+
+[patch.crates-io]
+bls12_381 = { git = "https://github.com/zkcrypto/bls12_381.git", rev = "d5df9da6b20619bf77cc432447c02f8f6a6a1fb3" }

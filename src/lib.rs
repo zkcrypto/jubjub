@@ -46,7 +46,7 @@ use group::{
     prime::PrimeGroup,
     Curve, Group, GroupEncoding,
 };
-use rand_core::RngCore;
+use rand_core::TryRngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "alloc")]
@@ -1241,10 +1241,10 @@ impl_binops_multiplicative!(SubgroupPoint, Fr);
 impl Group for ExtendedPoint {
     type Scalar = Fr;
 
-    fn random(mut rng: impl RngCore) -> Self {
+    fn try_from_rng<R: TryRngCore + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         loop {
-            let v = Fq::random(&mut rng);
-            let flip_sign = rng.next_u32() % 2 != 0;
+            let v = Fq::try_from_rng(rng)?;
+            let flip_sign = rng.try_next_u32()? % 2 != 0;
 
             // See AffinePoint::from_bytes for details.
             let v2 = v.square();
@@ -1260,7 +1260,7 @@ impl Group for ExtendedPoint {
                 let p = p.unwrap().to_curve();
 
                 if bool::from(!p.is_identity()) {
-                    return p;
+                    return Ok(p);
                 }
             }
         }
@@ -1287,12 +1287,12 @@ impl Group for ExtendedPoint {
 impl Group for SubgroupPoint {
     type Scalar = Fr;
 
-    fn random(mut rng: impl RngCore) -> Self {
+    fn try_from_rng<R: TryRngCore + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         loop {
-            let p = ExtendedPoint::random(&mut rng).clear_cofactor();
+            let p = ExtendedPoint::try_from_rng(rng)?.clear_cofactor();
 
             if bool::from(!p.is_identity()) {
-                return p;
+                return Ok(p);
             }
         }
     }
