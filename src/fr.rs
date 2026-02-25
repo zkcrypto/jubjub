@@ -6,7 +6,7 @@ use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use ff::{Field, PrimeField};
-use rand_core::RngCore;
+use rand_core::TryRngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "bits")]
@@ -681,10 +681,10 @@ impl Field for Fr {
     const ZERO: Self = Self::zero();
     const ONE: Self = Self::one();
 
-    fn random(mut rng: impl RngCore) -> Self {
+    fn try_from_rng<R: TryRngCore + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         let mut buf = [0; 64];
-        rng.fill_bytes(&mut buf);
-        Self::from_bytes_wide(&buf)
+        rng.try_fill_bytes(&mut buf)?;
+        Ok(Self::from_bytes_wide(&buf))
     }
 
     #[must_use]
