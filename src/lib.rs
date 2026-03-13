@@ -16,7 +16,7 @@
 //!
 //! This crate uses the `subtle` crate to perform constant-time operations.
 
-#![no_std]
+#![cfg_attr(not(feature = "arbitrary"), no_std)]
 // Catch documentation errors caused by code changes.
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
@@ -135,13 +135,24 @@ impl ConditionallySelectable for AffinePoint {
 /// * Add it to an `ExtendedPoint`, `AffineNielsPoint` or `ExtendedNielsPoint`.
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[derive(Clone, Copy, Debug, Eq)]
 pub struct ExtendedPoint {
     u: Fq,
     v: Fq,
+    #[cfg_attr(feature = "arbitrary", arbitrary(with = arbitrary_non_zero_fq))]
     z: Fq,
     t1: Fq,
     t2: Fq,
+}
+
+#[cfg(feature = "arbitrary")]
+fn arbitrary_non_zero_fq(u: &mut arbitrary::Unstructured) -> arbitrary::Result<Fq> {
+    let raw: Fq = arbitrary::Arbitrary::arbitrary(u)?;
+    if bool::from(raw.is_zero()) {
+        return Err(arbitrary::Error::IncorrectFormat);
+    }
+    Ok(raw)
 }
 
 impl fmt::Display for ExtendedPoint {
@@ -1118,6 +1129,7 @@ impl_binops_multiplicative_mixed!(AffinePoint, Fr, ExtendedPoint);
 
 /// This represents a point in the prime-order subgroup of Jubjub, in extended
 /// coordinates.
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SubgroupPoint(ExtendedPoint);
 
