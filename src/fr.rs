@@ -136,7 +136,7 @@ const DELTA: Fr = Fr([
     0x0e30_3e96_f8cb_47bd,
 ]);
 
-impl<'a> Neg for &'a Fr {
+impl Neg for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -154,7 +154,7 @@ impl Neg for Fr {
     }
 }
 
-impl<'a, 'b> Sub<&'b Fr> for &'a Fr {
+impl<'b> Sub<&'b Fr> for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -163,7 +163,7 @@ impl<'a, 'b> Sub<&'b Fr> for &'a Fr {
     }
 }
 
-impl<'a, 'b> Add<&'b Fr> for &'a Fr {
+impl<'b> Add<&'b Fr> for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -172,7 +172,7 @@ impl<'a, 'b> Add<&'b Fr> for &'a Fr {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a Fr {
+impl<'b> Mul<&'b Fr> for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -345,7 +345,7 @@ impl Fr {
     /// Converts from an integer represented in little endian
     /// into its (congruent) `Fr` representation.
     pub const fn from_raw(val: [u64; 4]) -> Self {
-        (&Fr(val)).mul(&R2)
+        Self::mul(&Fr(val), &R2)
     }
 
     /// Squares this element.
@@ -584,7 +584,7 @@ impl Fr {
         let (r7, _) = adc(r7, carry2, carry);
 
         // Result may be within MODULUS of the correct value
-        (&Fr([r4, r5, r6, r7])).sub(&MODULUS)
+        Self::sub(&Fr([r4, r5, r6, r7]), &MODULUS)
     }
 
     /// Multiplies this element by another element
@@ -643,7 +643,7 @@ impl Fr {
 
         // Attempt to subtract the modulus, to ensure the value
         // is smaller than the modulus.
-        (&Fr([d0, d1, d2, d3])).sub(&MODULUS)
+        Self::sub(&Fr([d0, d1, d2, d3]), &MODULUS)
     }
 
     /// Negates this element.

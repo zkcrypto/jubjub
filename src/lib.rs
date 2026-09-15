@@ -301,7 +301,7 @@ impl AffineNielsPoint {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a AffineNielsPoint {
+impl<'b> Mul<&'b Fr> for &AffineNielsPoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -385,7 +385,7 @@ impl ExtendedNielsPoint {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedNielsPoint {
+impl<'b> Mul<&'b Fr> for &ExtendedNielsPoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -601,7 +601,7 @@ impl AffinePoint {
 
         items
             .into_iter()
-            .zip(denominators.into_iter())
+            .zip(denominators)
             .map(|(item, inv_denominator)| {
                 item.and_then(
                     |Item {
@@ -870,7 +870,7 @@ impl ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedPoint {
+impl<'b> Mul<&'b Fr> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -880,7 +880,7 @@ impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedPoint {
 
 impl_binops_multiplicative!(ExtendedPoint, Fr);
 
-impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b ExtendedNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -919,7 +919,7 @@ impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b ExtendedNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -941,7 +941,7 @@ impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, ExtendedNielsPoint);
 
-impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b AffineNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -967,7 +967,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b AffineNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -989,7 +989,7 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, AffineNielsPoint);
 
-impl<'a, 'b> Add<&'b ExtendedPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b ExtendedPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -998,7 +998,7 @@ impl<'a, 'b> Add<&'b ExtendedPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b ExtendedPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b ExtendedPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1009,7 +1009,7 @@ impl<'a, 'b> Sub<&'b ExtendedPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, ExtendedPoint);
 
-impl<'a, 'b> Add<&'b AffinePoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b AffinePoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1018,7 +1018,7 @@ impl<'a, 'b> Add<&'b AffinePoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b AffinePoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b AffinePoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1106,7 +1106,7 @@ pub fn batch_normalize(v: &mut [ExtendedPoint]) -> impl Iterator<Item = AffinePo
     v.iter().map(|p| AffinePoint { u: p.u, v: p.v })
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a AffinePoint {
+impl<'b> Mul<&'b Fr> for &AffinePoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -1188,7 +1188,7 @@ impl Neg for &SubgroupPoint {
     }
 }
 
-impl<'a, 'b> Add<&'b SubgroupPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b SubgroupPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1197,7 +1197,7 @@ impl<'a, 'b> Add<&'b SubgroupPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b SubgroupPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1208,7 +1208,7 @@ impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, SubgroupPoint);
 
-impl<'a, 'b> Add<&'b SubgroupPoint> for &'a SubgroupPoint {
+impl<'b> Add<&'b SubgroupPoint> for &SubgroupPoint {
     type Output = SubgroupPoint;
 
     #[inline]
@@ -1217,7 +1217,7 @@ impl<'a, 'b> Add<&'b SubgroupPoint> for &'a SubgroupPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a SubgroupPoint {
+impl<'b> Sub<&'b SubgroupPoint> for &SubgroupPoint {
     type Output = SubgroupPoint;
 
     #[inline]
@@ -1228,7 +1228,7 @@ impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a SubgroupPoint {
 
 impl_binops_additive!(SubgroupPoint, SubgroupPoint);
 
-impl<'a, 'b> Mul<&'b Fr> for &'a SubgroupPoint {
+impl<'b> Mul<&'b Fr> for &SubgroupPoint {
     type Output = SubgroupPoint;
 
     fn mul(self, other: &'b Fr) -> SubgroupPoint {
