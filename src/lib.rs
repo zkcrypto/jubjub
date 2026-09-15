@@ -42,9 +42,9 @@ use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use ff::{BatchInverter, Field};
 use group::{
+    Curve, Group, GroupEncoding,
     cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
     prime::PrimeGroup,
-    Curve, Group, GroupEncoding,
 };
 use rand_core::TryRngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -1805,8 +1805,8 @@ fn test_mul_consistency() {
 
 #[test]
 fn test_serialization_consistency() {
-    let gen = FULL_GENERATOR.mul_by_cofactor();
-    let mut p = gen;
+    let r#gen = FULL_GENERATOR.mul_by_cofactor();
+    let mut p = r#gen;
 
     let v = vec![
         [
@@ -1885,7 +1885,7 @@ fn test_serialization_consistency() {
         assert_eq!(affine, deserialized);
         assert_eq!(affine, batch_deserialized.unwrap());
         assert_eq!(expected_serialized, serialized);
-        p += gen;
+        p += r#gen;
     }
 }
 
