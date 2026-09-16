@@ -42,11 +42,11 @@ use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use ff::{BatchInverter, Field};
 use group::{
-    cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
+    Curve, CurveAffine, Group, GroupEncoding,
+    cofactor::{CofactorCurve, CofactorGroup},
     prime::PrimeGroup,
-    Curve, Group, GroupEncoding,
 };
-use rand_core::RngCore;
+use rand_core::TryRng;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "alloc")]
@@ -301,7 +301,7 @@ impl AffineNielsPoint {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a AffineNielsPoint {
+impl<'b> Mul<&'b Fr> for &AffineNielsPoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -385,7 +385,7 @@ impl ExtendedNielsPoint {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedNielsPoint {
+impl<'b> Mul<&'b Fr> for &ExtendedNielsPoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -601,7 +601,7 @@ impl AffinePoint {
 
         items
             .into_iter()
-            .zip(denominators.into_iter())
+            .zip(denominators)
             .map(|(item, inv_denominator)| {
                 item.and_then(
                     |Item {
@@ -870,7 +870,7 @@ impl ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedPoint {
+impl<'b> Mul<&'b Fr> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -880,7 +880,7 @@ impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedPoint {
 
 impl_binops_multiplicative!(ExtendedPoint, Fr);
 
-impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b ExtendedNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -919,7 +919,7 @@ impl<'a, 'b> Add<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b ExtendedNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -941,7 +941,7 @@ impl<'a, 'b> Sub<&'b ExtendedNielsPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, ExtendedNielsPoint);
 
-impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b AffineNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -967,7 +967,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b AffineNielsPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
@@ -989,7 +989,7 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, AffineNielsPoint);
 
-impl<'a, 'b> Add<&'b ExtendedPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b ExtendedPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -998,7 +998,7 @@ impl<'a, 'b> Add<&'b ExtendedPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b ExtendedPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b ExtendedPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1009,7 +1009,7 @@ impl<'a, 'b> Sub<&'b ExtendedPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, ExtendedPoint);
 
-impl<'a, 'b> Add<&'b AffinePoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b AffinePoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1018,7 +1018,7 @@ impl<'a, 'b> Add<&'b AffinePoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b AffinePoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b AffinePoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1106,7 +1106,7 @@ pub fn batch_normalize(v: &mut [ExtendedPoint]) -> impl Iterator<Item = AffinePo
     v.iter().map(|p| AffinePoint { u: p.u, v: p.v })
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a AffinePoint {
+impl<'b> Mul<&'b Fr> for &AffinePoint {
     type Output = ExtendedPoint;
 
     fn mul(self, other: &'b Fr) -> ExtendedPoint {
@@ -1188,7 +1188,7 @@ impl Neg for &SubgroupPoint {
     }
 }
 
-impl<'a, 'b> Add<&'b SubgroupPoint> for &'a ExtendedPoint {
+impl<'b> Add<&'b SubgroupPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1197,7 +1197,7 @@ impl<'a, 'b> Add<&'b SubgroupPoint> for &'a ExtendedPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a ExtendedPoint {
+impl<'b> Sub<&'b SubgroupPoint> for &ExtendedPoint {
     type Output = ExtendedPoint;
 
     #[inline]
@@ -1208,7 +1208,7 @@ impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a ExtendedPoint {
 
 impl_binops_additive!(ExtendedPoint, SubgroupPoint);
 
-impl<'a, 'b> Add<&'b SubgroupPoint> for &'a SubgroupPoint {
+impl<'b> Add<&'b SubgroupPoint> for &SubgroupPoint {
     type Output = SubgroupPoint;
 
     #[inline]
@@ -1217,7 +1217,7 @@ impl<'a, 'b> Add<&'b SubgroupPoint> for &'a SubgroupPoint {
     }
 }
 
-impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a SubgroupPoint {
+impl<'b> Sub<&'b SubgroupPoint> for &SubgroupPoint {
     type Output = SubgroupPoint;
 
     #[inline]
@@ -1228,7 +1228,7 @@ impl<'a, 'b> Sub<&'b SubgroupPoint> for &'a SubgroupPoint {
 
 impl_binops_additive!(SubgroupPoint, SubgroupPoint);
 
-impl<'a, 'b> Mul<&'b Fr> for &'a SubgroupPoint {
+impl<'b> Mul<&'b Fr> for &SubgroupPoint {
     type Output = SubgroupPoint;
 
     fn mul(self, other: &'b Fr) -> SubgroupPoint {
@@ -1241,10 +1241,10 @@ impl_binops_multiplicative!(SubgroupPoint, Fr);
 impl Group for ExtendedPoint {
     type Scalar = Fr;
 
-    fn random(mut rng: impl RngCore) -> Self {
+    fn try_random<R: TryRng + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         loop {
-            let v = Fq::random(&mut rng);
-            let flip_sign = rng.next_u32() % 2 != 0;
+            let v = Fq::try_random(rng)?;
+            let flip_sign = rng.try_next_u32()? % 2 != 0;
 
             // See AffinePoint::from_bytes for details.
             let v2 = v.square();
@@ -1260,7 +1260,7 @@ impl Group for ExtendedPoint {
                 let p = p.unwrap().to_curve();
 
                 if bool::from(!p.is_identity()) {
-                    return p;
+                    return Ok(p);
                 }
             }
         }
@@ -1287,12 +1287,12 @@ impl Group for ExtendedPoint {
 impl Group for SubgroupPoint {
     type Scalar = Fr;
 
-    fn random(mut rng: impl RngCore) -> Self {
+    fn try_random<R: TryRng + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         loop {
-            let p = ExtendedPoint::random(&mut rng).clear_cofactor();
+            let p = ExtendedPoint::try_random(rng)?.clear_cofactor();
 
             if bool::from(!p.is_identity()) {
-                return p;
+                return Ok(p);
             }
         }
     }
@@ -1354,22 +1354,20 @@ impl CofactorGroup for ExtendedPoint {
 }
 
 impl Curve for ExtendedPoint {
-    type AffineRepr = AffinePoint;
+    type Affine = AffinePoint;
 
-    fn batch_normalize(p: &[Self], q: &mut [Self::AffineRepr]) {
+    fn batch_normalize(p: &[Self], q: &mut [Self::Affine]) {
         Self::batch_normalize(p, q);
     }
 
-    fn to_affine(&self) -> Self::AffineRepr {
+    fn to_affine(&self) -> Self::Affine {
         self.into()
     }
 }
 
-impl CofactorCurve for ExtendedPoint {
-    type Affine = AffinePoint;
-}
+impl CofactorCurve for ExtendedPoint {}
 
-impl CofactorCurveAffine for AffinePoint {
+impl CurveAffine for AffinePoint {
     type Scalar = Fr;
     type Curve = ExtendedPoint;
 
@@ -1805,8 +1803,8 @@ fn test_mul_consistency() {
 
 #[test]
 fn test_serialization_consistency() {
-    let gen = FULL_GENERATOR.mul_by_cofactor();
-    let mut p = gen;
+    let r#gen = FULL_GENERATOR.mul_by_cofactor();
+    let mut p = r#gen;
 
     let v = vec![
         [
@@ -1885,7 +1883,7 @@ fn test_serialization_consistency() {
         assert_eq!(affine, deserialized);
         assert_eq!(affine, batch_deserialized.unwrap());
         assert_eq!(expected_serialized, serialized);
-        p += gen;
+        p += r#gen;
     }
 }
 

@@ -1,6 +1,6 @@
 mod common;
 
-use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
+use common::{MyRandom, NUM_BLACK_BOX_CHECKS, new_rng};
 use jubjub::*;
 
 #[test]

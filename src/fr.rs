@@ -6,7 +6,7 @@ use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use ff::{Field, PrimeField};
-use rand_core::RngCore;
+use rand_core::TryRng;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "bits")]
@@ -136,7 +136,7 @@ const DELTA: Fr = Fr([
     0x0e30_3e96_f8cb_47bd,
 ]);
 
-impl<'a> Neg for &'a Fr {
+impl Neg for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -154,7 +154,7 @@ impl Neg for Fr {
     }
 }
 
-impl<'a, 'b> Sub<&'b Fr> for &'a Fr {
+impl<'b> Sub<&'b Fr> for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -163,7 +163,7 @@ impl<'a, 'b> Sub<&'b Fr> for &'a Fr {
     }
 }
 
-impl<'a, 'b> Add<&'b Fr> for &'a Fr {
+impl<'b> Add<&'b Fr> for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -172,7 +172,7 @@ impl<'a, 'b> Add<&'b Fr> for &'a Fr {
     }
 }
 
-impl<'a, 'b> Mul<&'b Fr> for &'a Fr {
+impl<'b> Mul<&'b Fr> for &Fr {
     type Output = Fr;
 
     #[inline]
@@ -345,7 +345,7 @@ impl Fr {
     /// Converts from an integer represented in little endian
     /// into its (congruent) `Fr` representation.
     pub const fn from_raw(val: [u64; 4]) -> Self {
-        (&Fr(val)).mul(&R2)
+        Self::mul(&Fr(val), &R2)
     }
 
     /// Squares this element.
@@ -584,7 +584,7 @@ impl Fr {
         let (r7, _) = adc(r7, carry2, carry);
 
         // Result may be within MODULUS of the correct value
-        (&Fr([r4, r5, r6, r7])).sub(&MODULUS)
+        Self::sub(&Fr([r4, r5, r6, r7]), &MODULUS)
     }
 
     /// Multiplies this element by another element
@@ -643,7 +643,7 @@ impl Fr {
 
         // Attempt to subtract the modulus, to ensure the value
         // is smaller than the modulus.
-        (&Fr([d0, d1, d2, d3])).sub(&MODULUS)
+        Self::sub(&Fr([d0, d1, d2, d3]), &MODULUS)
     }
 
     /// Negates this element.
@@ -681,10 +681,10 @@ impl Field for Fr {
     const ZERO: Self = Self::zero();
     const ONE: Self = Self::one();
 
-    fn random(mut rng: impl RngCore) -> Self {
+    fn try_random<R: TryRng + ?Sized>(rng: &mut R) -> Result<Self, R::Error> {
         let mut buf = [0; 64];
-        rng.fill_bytes(&mut buf);
-        Self::from_bytes_wide(&buf)
+        rng.try_fill_bytes(&mut buf)?;
+        Ok(Self::from_bytes_wide(&buf))
     }
 
     #[must_use]
@@ -992,7 +992,9 @@ fn test_from_u512_max() {
     let max_u64 = 0xffff_ffff_ffff_ffff;
     assert_eq!(
         R3 - R,
-        Fr::from_u512([max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64])
+        Fr::from_u512([
+            max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64
+        ])
     );
 }
 
