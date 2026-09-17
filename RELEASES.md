@@ -1,4 +1,9 @@
 # Unreleased
+## Added
+- `zeroize` feature flag, which enables `impl zeroize::DefaultIsZeroes` for `Fr`,
+  `AffinePoint`, `ExtendedPoint` and `SubgroupPoint`, and turns on `bls12_381/zeroize`
+  so that `Fq` is covered too. Zeroizing a field element sets it to zero; zeroizing
+  a point sets it to the identity.
 
 # 0.11.0
 ## Changed

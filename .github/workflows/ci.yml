@@ -35,6 +35,13 @@ jobs:
           --verbose
           --target ${{ matrix.target }}
           --no-default-features
+      - name: Build with zeroize
+        run: >
+          cargo build
+          --verbose
+          --target ${{ matrix.target }}
+          --no-default-features
+          --features zeroize
 
   bitrot:
     name: Bitrot check
