@@ -1067,12 +1067,20 @@ impl Default for AffinePoint {
     }
 }
 
+/// Zeroizing a point overwrites it with the identity, which is the `Default` value.
+#[cfg(feature = "zeroize")]
+impl zeroize::DefaultIsZeroes for AffinePoint {}
+
 impl Default for ExtendedPoint {
     /// Returns the identity.
     fn default() -> ExtendedPoint {
         ExtendedPoint::identity()
     }
 }
+
+/// Zeroizing a point overwrites it with the identity, which is the `Default` value.
+#[cfg(feature = "zeroize")]
+impl zeroize::DefaultIsZeroes for ExtendedPoint {}
 
 /// This takes a mutable slice of `ExtendedPoint`s and "normalizes" them using
 /// only a single inversion for the entire batch. This normalization results in
@@ -1120,6 +1128,10 @@ impl_binops_multiplicative_mixed!(AffinePoint, Fr, ExtendedPoint);
 /// coordinates.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SubgroupPoint(ExtendedPoint);
+
+/// Zeroizing a point overwrites it with the identity, which is the `Default` value.
+#[cfg(feature = "zeroize")]
+impl zeroize::DefaultIsZeroes for SubgroupPoint {}
 
 impl From<SubgroupPoint> for ExtendedPoint {
     fn from(val: SubgroupPoint) -> ExtendedPoint {
@@ -1929,5 +1941,35 @@ fn test_zip_216() {
             encoded[31] |= 0b1000_0000;
             assert_eq!(b, &encoded);
         }
+    }
+}
+
+#[cfg(all(test, feature = "zeroize"))]
+mod zeroize_tests {
+    use group::Group;
+    use zeroize::Zeroize;
+
+    use super::{AffinePoint, ExtendedPoint, Fq, SubgroupPoint};
+
+    #[test]
+    fn base_field_elements_zeroize() {
+        let mut a = <Fq as ff::Field>::ONE;
+        a.zeroize();
+        assert_eq!(a, Fq::zero());
+    }
+
+    #[test]
+    fn points_zeroize_to_identity() {
+        let mut p = ExtendedPoint::generator();
+        p.zeroize();
+        assert!(bool::from(p.is_identity()));
+
+        let mut a = AffinePoint::from(ExtendedPoint::generator());
+        a.zeroize();
+        assert!(bool::from(a.is_identity()));
+
+        let mut s = SubgroupPoint::generator();
+        s.zeroize();
+        assert!(bool::from(s.is_identity()));
     }
 }

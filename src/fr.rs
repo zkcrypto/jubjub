@@ -243,6 +243,9 @@ impl Default for Fr {
     }
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::DefaultIsZeroes for Fr {}
+
 impl Fr {
     /// Returns zero, the additive identity.
     #[inline]
@@ -1243,4 +1246,14 @@ fn test_from_raw() {
     assert_eq!(Fr::from_raw(MODULUS.0), Fr::zero());
 
     assert_eq!(Fr::from_raw([1, 0, 0, 0]), R);
+}
+
+#[cfg(feature = "zeroize")]
+#[test]
+fn test_zeroize() {
+    use zeroize::Zeroize;
+
+    let mut a = <Fr as ff::Field>::ONE;
+    a.zeroize();
+    assert_eq!(a, Fr::zero());
 }

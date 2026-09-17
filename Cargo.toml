@@ -21,6 +21,7 @@ ff = { version = "0.14", default-features = false }
 group = { version = "0.14", default-features = false }
 rand_core = { version = "0.10", default-features = false }
 subtle = { version = "^2.2.1", default-features = false }
+zeroize = { version = "1", optional = true, default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"
@@ -31,6 +32,7 @@ rand_xorshift = { version = "0.5", default-features = false }
 default = ["alloc", "bits"]
 alloc = ["ff/alloc", "group/alloc"]
 bits = ["ff/bits"]
+zeroize = ["dep:zeroize", "bls12_381/zeroize"]
 
 [[bench]]
 name = "fq_bench"
