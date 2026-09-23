@@ -1,4 +1,6 @@
 # Unreleased
+
+# 0.11.1
 ## Added
 - `zeroize` feature flag, which enables `impl zeroize::DefaultIsZeroes` for `Fr`,
   `AffinePoint`, `ExtendedPoint` and `SubgroupPoint`, and turns on `bls12_381/zeroize`
